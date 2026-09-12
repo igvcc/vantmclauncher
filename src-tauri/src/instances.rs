@@ -83,7 +83,17 @@ pub fn create_instance(
 pub fn delete_instance(id: &str) -> Result<(), String> {
     let dir = get_instance_dir(id);
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| format!("Błąd usuwania instancji: {}", e))?;
+        if let Err(e) = fs::remove_dir_all(&dir) {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let _ = fs::set_permissions(&dir, fs::Permissions::from_mode(0o777));
+                for entry in walkdir::WalkDir::new(&dir).into_iter().flatten() {
+                    let _ = fs::set_permissions(entry.path(), fs::Permissions::from_mode(0o777));
+                }
+            }
+            fs::remove_dir_all(&dir).map_err(|e2| format!("Błąd usuwania folderu profilu ({}): {}", e, e2))?;
+        }
     }
     Ok(())
 }

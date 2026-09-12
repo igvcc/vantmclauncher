@@ -35,6 +35,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   fetchFabricLoaders,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [instancePendingDelete, setInstancePendingDelete] = useState<Instance | null>(null);
   const [name, setName] = useState("");
   const [mcVersion, setMcVersion] = useState("26.2");
   const [loader, setLoader] = useState<"fabric" | "vanilla" | "forge" | "neoforge" | "quilt">("fabric");
@@ -195,106 +196,123 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
         </button>
       </div>
 
-      {/* Grid of Instances */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {instances.map((inst) => {
-          const isActive = inst.id === activeInstanceId;
-          return (
-            <div
-              key={inst.id}
-              className={`glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all relative overflow-hidden ${
-                isActive
-                  ? "border-cyan-400/50 shadow-neon-cyan bg-cyan-950/10"
-                  : "hover:border-white/20"
-              }`}
-            >
-              {isActive && (
-                <div className="absolute top-0 right-0 px-3 py-1 bg-cyan-400 text-black font-bold text-[10px] tracking-wider uppercase rounded-bl-xl shadow-md">
-                  Wybrany
-                </div>
-              )}
-
-              <div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div
-                    className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-neon-cyan shrink-0 shadow-md"
-                    style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, maxWidth: 48, maxHeight: 48 }}
-                  >
-                    <Box size={24} />
+      {/* Grid of Instances or Empty State */}
+      {instances.length === 0 ? (
+        <div className="glass-panel rounded-3xl p-12 text-center flex flex-col items-center justify-center border border-white/10 my-8">
+          <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan flex items-center justify-center mb-4 shadow-lg shadow-cyan-500/10">
+            <Layers size={32} />
+          </div>
+          <h3 className="text-xl font-heading font-bold text-white mb-2">Brak profili gry</h3>
+          <p className="text-xs text-gray-400 max-w-md mb-6 leading-relaxed">
+            Nie masz jeszcze żadnego profilu. Kliknij przycisk poniżej, aby stworzyć swój pierwszy profil gry w dowolnej wersji Minecrafta!
+          </p>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="btn-neon flex items-center gap-2 px-6 py-3 rounded-xl font-heading font-bold text-xs tracking-wider uppercase cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Stwórz pierwszy profil</span>
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {instances.map((inst) => {
+            const isActive = inst.id === activeInstanceId;
+            return (
+              <div
+                key={inst.id}
+                className={`glass-panel rounded-2xl p-5 flex flex-col justify-between transition-all relative overflow-hidden ${
+                  isActive
+                    ? "border-cyan-400/50 shadow-neon-cyan bg-cyan-950/10"
+                    : "hover:border-white/20"
+                }`}
+              >
+                {isActive && (
+                  <div className="absolute top-0 right-0 px-3 py-1 bg-cyan-400 text-black font-bold text-[10px] tracking-wider uppercase rounded-bl-xl shadow-md">
+                    Wybrany
                   </div>
-                  <div>
-                    <h3 className="font-heading font-bold text-base text-white truncate max-w-[180px]">
-                      {inst.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] font-mono text-neon-cyan uppercase font-semibold">
-                        {inst.loader}
-                      </span>
-                      <span className="text-xs text-gray-500">•</span>
-                      <span className="text-[11px] font-mono text-gray-400">{inst.mc_version}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-[11px] text-gray-400 flex flex-col gap-1 py-3 border-y border-white/5 my-3 font-mono">
-                  <div className="flex justify-between">
-                    <span>Silnik modów:</span>
-                    <span className="text-gray-300 font-semibold uppercase">{inst.loader}</span>
-                  </div>
-                  {inst.loader_version && (
-                    <div className="flex justify-between">
-                      <span>Wersja silnika:</span>
-                      <span className="text-gray-300">{inst.loader_version}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span>Pamięć RAM:</span>
-                    <span className="text-gray-300">{inst.memory_mb || 4096} MB</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                {!isActive ? (
-                  <button
-                    onClick={() => onSelectInstance(inst.id)}
-                    className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-center"
-                  >
-                    Wybierz
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => onLaunchInstance(inst.id)}
-                    className="flex-1 py-2 rounded-xl bg-neon-cyan text-black font-semibold text-xs hover:bg-cyan-300 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-neon-cyan"
-                  >
-                    <Play size={14} fill="currentColor" />
-                    <span>Graj teraz</span>
-                  </button>
                 )}
 
-                <button
-                  onClick={() => onOpenFolder(inst.id)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  title="Otwórz folder profilu"
-                >
-                  <FolderOpen size={16} />
-                </button>
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div
+                      className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-neon-cyan shrink-0 shadow-md"
+                      style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, maxWidth: 48, maxHeight: 48 }}
+                    >
+                      <Box size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-heading font-bold text-base text-white truncate max-w-[180px]">
+                        {inst.name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[11px] font-mono text-neon-cyan uppercase font-semibold">
+                          {inst.loader}
+                        </span>
+                        <span className="text-xs text-gray-500">•</span>
+                        <span className="text-[11px] font-mono text-gray-400">{inst.mc_version}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                {instances.length > 1 && (
+                  <div className="text-[11px] text-gray-400 flex flex-col gap-1 py-3 border-y border-white/5 my-3 font-mono">
+                    <div className="flex justify-between">
+                      <span>Silnik modów:</span>
+                      <span className="text-gray-300 font-semibold uppercase">{inst.loader}</span>
+                    </div>
+                    {inst.loader_version && (
+                      <div className="flex justify-between">
+                        <span>Wersja silnika:</span>
+                        <span className="text-gray-300">{inst.loader_version}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Pamięć RAM:</span>
+                      <span className="text-gray-300">{inst.memory_mb || 4096} MB</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-1">
+                  {!isActive ? (
+                    <button
+                      onClick={() => onSelectInstance(inst.id)}
+                      className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer text-center"
+                    >
+                      Wybierz
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => onLaunchInstance(inst.id)}
+                      className="flex-1 py-2 rounded-xl bg-neon-cyan text-black font-semibold text-xs hover:bg-cyan-300 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-neon-cyan"
+                    >
+                      <Play size={14} fill="currentColor" />
+                      <span>Graj teraz</span>
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => onDeleteInstance(inst.id)}
+                    onClick={() => onOpenFolder(inst.id)}
+                    className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
+                    title="Otwórz folder profilu"
+                  >
+                    <FolderOpen size={16} />
+                  </button>
+
+                  <button
+                    onClick={() => setInstancePendingDelete(inst)}
                     className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/20 text-gray-400 hover:text-rose-400 transition-colors cursor-pointer"
                     title="Usuń profil"
                   >
                     <Trash2 size={16} />
                   </button>
-                )}
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* New Instance Modal */}
       {isModalOpen && (
@@ -490,6 +508,57 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Instance Modal */}
+      {instancePendingDelete && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="glass-panel rounded-3xl p-6 max-w-md w-full border border-rose-500/20 shadow-2xl relative">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-heading font-bold text-white">
+                  Usunąć profil gry?
+                </h3>
+                <p className="text-xs text-gray-400">
+                  Ta operacja jest nieodwracalna
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+              Czy na pewno chcesz trwale usunąć profil{" "}
+              <span className="font-semibold text-white px-2 py-0.5 rounded bg-white/10 font-mono">
+                {instancePendingDelete.name}
+              </span>{" "}
+              ({instancePendingDelete.loader} {instancePendingDelete.mc_version})?
+              Wszystkie zapisane światy, pliki konfiguracyjne i modyfikacje zostaną bezpowrotnie usunięte z dysku.
+            </p>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setInstancePendingDelete(null)}
+                className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onDeleteInstance(instancePendingDelete.id);
+                  setInstancePendingDelete(null);
+                }}
+                className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-xs font-bold text-white transition-all cursor-pointer shadow-lg shadow-rose-950/40 flex items-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>Usuń bezpowrotnie</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

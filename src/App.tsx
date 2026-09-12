@@ -271,9 +271,6 @@ export default function App() {
   };
 
   const handleDeleteInstance = async (id: string) => {
-    if (!confirm("Czy na pewno chcesz usunąć ten profil gry wraz ze wszystkimi zapisanymi światami i modami?")) {
-      return;
-    }
     try {
       await invoke("delete_instance", { id });
       const updated = instances.filter((i) => i.id !== id);
@@ -281,11 +278,16 @@ export default function App() {
       if (activeInstanceId === id) {
         if (updated.length > 0) {
           handleSelectInstance(updated[0].id);
+        } else {
+          setActiveInstanceId(null);
+          const updatedSettings = { ...settings, selected_instance_id: null };
+          setSettings(updatedSettings);
+          invoke("save_settings", { newSettings: updatedSettings }).catch(console.error);
         }
       }
-      showToast("Profil został usunięty", "info");
+      showToast("Profil został pomyślnie usunięty", "info");
     } catch (err) {
-      showToast(String(err), "error");
+      showToast(`Błąd usuwania profilu: ${err}`, "error");
     }
   };
 
