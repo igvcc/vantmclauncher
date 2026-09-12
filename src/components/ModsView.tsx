@@ -142,7 +142,50 @@ export const ModsView: React.FC<ModsViewProps> = ({
         return;
       }
 
-      const targetFile = versions[0].files.find((f) => f.primary) || versions[0].files[0];
+      let targetVersion = versions[0];
+      const hasIris = mods.some((m) => m.filename.toLowerCase().includes("iris"));
+      const isSodium = mod.project_id === "AANobbMI" || mod.title.toLowerCase().includes("sodium");
+
+      if (isSodium && hasIris) {
+        // Jeśli Iris jest obecny, wersja Sodium 0.9.2 ma regułę breaks: iris <= 1.11.2.
+        // Automatycznie dobieramy wersję Sodium 0.9.1, która jest w 100% zgodna z Irisem.
+        const compat = versions.find((v) => v.version_number.includes("0.9.1"));
+        if (compat) {
+          targetVersion = compat;
+        }
+      }
+
+      const isIris = mod.project_id === "YL57xq9U" || mod.title.toLowerCase().includes("iris");
+      if (isIris) {
+        // Jeśli instalujemy Iris, a użytkownik ma Sodium 0.9.2 (które wyklucza Irisa),
+        // automatycznie podmieniamy Sodium na wersję 0.9.1
+        const existingBrokenSodium = mods.find(
+          (m) => m.filename.toLowerCase().includes("sodium") && m.filename.includes("0.9.2")
+        );
+        if (existingBrokenSodium) {
+          onDeleteMod(existingBrokenSodium.filename);
+          try {
+            const sodiumVersions = await safeInvoke<ModrinthVersion[]>("get_modrinth_versions", {
+              projectId: "AANobbMI",
+              loader: activeInstance.loader,
+              mcVersion: activeInstance.mc_version,
+            });
+            const compatSodium = sodiumVersions?.find((v) => v.version_number.includes("0.9.1"));
+            if (compatSodium && compatSodium.files && compatSodium.files.length > 0) {
+              const f = compatSodium.files.find((file) => file.primary) || compatSodium.files[0];
+              await safeInvoke("install_modrinth_mod", {
+                instanceId: activeInstance.id,
+                fileUrl: f.url,
+                filename: f.filename,
+              });
+            }
+          } catch (e) {
+            console.warn("Błąd autouzupełniania Sodium:", e);
+          }
+        }
+      }
+
+      const targetFile = targetVersion.files.find((f) => f.primary) || targetVersion.files[0];
       await safeInvoke("install_modrinth_mod", {
         instanceId: activeInstance.id,
         fileUrl: targetFile.url,
