@@ -4,7 +4,7 @@ use crate::downloader::{
     download_items_concurrently, is_library_allowed, is_native_for_wrong_arch, prepare_vanilla_files, DownloadItem,
 };
 use crate::instances::list_instances;
-use crate::java::{download_temurin_java, find_java_binary, scan_java_installations};
+use crate::java::{download_temurin_java, find_java_binary, probe_java_binary, scan_java_installations};
 use crate::models::{DownloadProgress, LaunchLogPayload};
 use crate::paths::{get_assets_dir, get_instance_dir, get_libraries_dir, get_runtimes_dir};
 use serde_json::Value;
@@ -224,11 +224,21 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
             || settings.jvm_args.contains("UseEpsilonGC");
 
         if std::env::consts::ARCH == "aarch64" && !has_any_gc {
-            // Apple Silicon unified memory & low-latency Generational ZGC for Java 21 only if user has not chosen another GC
-            jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
-            jvm_args.push("-XX:+UseZGC".to_string());
-            jvm_args.push("-XX:+ZGenerational".to_string());
-            jvm_args.push("-XX:+UseStringDeduplication".to_string());
+            let is_java_21_or_higher = probe_java_binary(Path::new(&java_bin))
+                .map(|info| info.major_version >= 21)
+                .unwrap_or(false);
+
+            if is_java_21_or_higher {
+                // Apple Silicon unified memory & low-latency Generational ZGC for Java 21+
+                jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
+                jvm_args.push("-XX:+UseZGC".to_string());
+                jvm_args.push("-XX:+ZGenerational".to_string());
+                jvm_args.push("-XX:+UseStringDeduplication".to_string());
+            } else {
+                // Java 17 and earlier do not support -XX:+ZGenerational
+                jvm_args.push("-XX:+UseG1GC".to_string());
+                jvm_args.push("-XX:+UseStringDeduplication".to_string());
+            }
         }
     }
 
@@ -252,7 +262,7 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         "--accessToken".to_string(),
         "0".to_string(),
         "--userType".to_string(),
-        "mojang".to_string(),
+        "legacy".to_string(),
         "--versionType".to_string(),
         "VantMcLauncher".to_string(),
     ];
@@ -316,6 +326,41 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     std::thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines().map_while(Result::ok) {
+            if line.contains("Loading Minecraft") {
+                let _ = app_h1.emit(
+                    "download-progress",
+                    DownloadProgress {
+                        step: "Uruchamianie".to_string(),
+                        current: 40,
+                        total: 100,
+                        percentage: 40.0,
+                        message: "Inicjalizacja silnika gry Minecraft...".to_string(),
+                    },
+                );
+            } else if line.contains("Loading") && line.contains("mods") {
+                let _ = app_h1.emit(
+                    "download-progress",
+                    DownloadProgress {
+                        step: "Mody".to_string(),
+                        current: 70,
+                        total: 100,
+                        percentage: 70.0,
+                        message: "Wczytywanie modyfikacji...".to_string(),
+                    },
+                );
+            } else if line.contains("Backend library: LWJGL") || line.contains("OpenGL") {
+                let _ = app_h1.emit(
+                    "download-progress",
+                    DownloadProgress {
+                        step: "Grafika".to_string(),
+                        current: 95,
+                        total: 100,
+                        percentage: 95.0,
+                        message: "Otwieranie okna gry Minecraft...".to_string(),
+                    },
+                );
+            }
+
             let _ = app_h1.emit(
                 "minecraft-log",
                 LaunchLogPayload {
@@ -414,6 +459,26 @@ pub fn kill_game_process(app_handle: &AppHandle, instance_id: Option<String>) ->
     };
 
     if targets.is_empty() {
+        #[cfg(unix)]
+        {
+            let _ = std::process::Command::new("pkill")
+                .args(["-9", "-f", "net.minecraft.client.main.Main"])
+                .output();
+            let _ = std::process::Command::new("pkill")
+                .args(["-9", "-f", "net.fabricmc.loader.impl.launch.knot.KnotClient"])
+                .output();
+        }
+        #[cfg(windows)]
+        {
+            let _ = std::process::Command::new("taskkill")
+                .args(["/F", "/IM", "javaw.exe"])
+                .output();
+        }
+        let _ = app_handle.emit("game-stopped", serde_json::json!({
+            "instance_id": instance_id.unwrap_or_default(),
+            "exit_code": -9,
+            "killed": true
+        }));
         return Ok(());
     }
 

@@ -388,18 +388,21 @@ export const ModsView: React.FC<ModsViewProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className="w-13 h-13 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden shadow-md">
+                        <div
+                          className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-md"
+                          style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, maxWidth: 48, maxHeight: 48 }}
+                        >
                           {mod.icon_base64 ? (
                             <img
                               src={mod.icon_base64}
                               alt={cleanName}
-                              className="w-full h-full object-cover rounded-xl"
+                              className="w-full h-full object-contain rounded-lg"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = "none";
                               }}
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-cyan-950/80 via-black to-purple-950/60 flex items-center justify-center border border-cyan-500/20 text-neon-cyan font-heading font-black text-sm shadow-inner">
+                            <div className="w-full h-full bg-gradient-to-br from-cyan-950/80 via-black to-purple-950/60 flex items-center justify-center border border-cyan-500/20 text-neon-cyan font-heading font-black text-xs shadow-inner rounded-lg">
                               {initials}
                             </div>
                           )}
@@ -519,18 +522,21 @@ export const ModsView: React.FC<ModsViewProps> = ({
                     className="glass-panel rounded-2xl p-4.5 border border-white/10 hover:border-cyan-500/30 hover:bg-white/[0.04] transition-all flex flex-col justify-between gap-3 shadow-lg"
                   >
                     <div className="flex items-start gap-3.5">
-                      <div className="w-14 h-14 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner p-1">
+                      <div
+                        className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] rounded-xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden p-1 shadow-md"
+                        style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, maxWidth: 48, maxHeight: 48 }}
+                      >
                         {mod.icon_url ? (
                           <img
                             src={mod.icon_url}
                             alt={mod.title}
-                            className="w-full h-full object-cover rounded-xl"
+                            className="w-full h-full object-contain rounded-lg"
                             onError={(e) => {
                               (e.target as HTMLElement).style.display = "none";
                             }}
                           />
                         ) : (
-                          <Puzzle size={24} className="text-neon-cyan" />
+                          <Puzzle size={22} className="text-neon-cyan" />
                         )}
                       </div>
 

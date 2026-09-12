@@ -136,11 +136,16 @@ export default function App() {
       setIsGameRunning(true);
       setRunningInstanceId(event.payload.instance_id);
       showToast("Minecraft wystartował! Dobrej gry!", "success");
+      setTimeout(() => {
+        setDownloadProgress(null);
+      }, 5000);
     });
 
     const unlistenGameStopped = listen<{ instance_id: string; exit_code: number }>("game-stopped", (event) => {
+      setIsLaunching(false);
       setIsGameRunning(false);
       setRunningInstanceId(null);
+      setDownloadProgress(null);
       if (event.payload.exit_code === 0) {
         showToast("Gra została zamknięta.", "info");
       } else {

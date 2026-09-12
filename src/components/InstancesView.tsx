@@ -155,7 +155,10 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-neon-cyan shadow-md">
+                  <div
+                    className="w-12 h-12 min-w-[48px] min-h-[48px] max-w-[48px] max-h-[48px] rounded-xl bg-black/40 border border-white/10 flex items-center justify-center text-neon-cyan shrink-0 shadow-md"
+                    style={{ width: 48, height: 48, minWidth: 48, minHeight: 48, maxWidth: 48, maxHeight: 48 }}
+                  >
                     <Box size={24} />
                   </div>
                   <div>
