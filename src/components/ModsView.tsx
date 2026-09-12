@@ -215,32 +215,71 @@ export const ModsView: React.FC<ModsViewProps> = ({
     }
   };
 
-  // Check if a project or version is already installed locally
-  const isItemInstalled = (title: string, slug: string, filename?: string) => {
-    const checkName = (filename || title).toLowerCase();
-    const checkSlug = slug.toLowerCase();
+  // Check if this specific version / file is installed in the instance
+  const isExactVersionInstalled = (filename: string, versionNumber?: string) => {
+    const fLower = filename.toLowerCase().trim();
+    const vClean = versionNumber?.toLowerCase().replace(/^v/, "").trim() || "";
 
     if (activeCategory === "mods") {
       return mods.some((m) => {
-        const mn = m.name.toLowerCase();
-        const fn = m.filename.toLowerCase();
+        const mFn = m.filename.toLowerCase().trim();
+        const mVer = m.version.toLowerCase().replace(/^v/, "").trim();
+
+        // 1. Direct filename match
+        if (mFn === fLower || mFn === `${fLower}.disabled`) return true;
+
+        // 2. Base filename without extension
+        const cleanF = fLower.replace(/\.jar(\.disabled)?$/, "");
+        const cleanMFn = mFn.replace(/\.jar(\.disabled)?$/, "");
+        if (cleanMFn === cleanF) return true;
+
+        // 3. Version number and project slug match
+        if (vClean && mVer && mVer === vClean && selectedProject) {
+          const slug = selectedProject.slug.toLowerCase();
+          if (mFn.includes(slug) || m.name.toLowerCase().includes(slug)) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+    }
+
+    return installedItems.some((item) => {
+      const iFn = item.filename.toLowerCase().trim();
+      if (iFn === fLower || iFn === `${fLower}.disabled`) return true;
+      const cleanF = fLower.replace(/\.zip(\.disabled)?$/, "");
+      const cleanIFn = iFn.replace(/\.zip(\.disabled)?$/, "");
+      return cleanIFn === cleanF;
+    });
+  };
+
+  // Check if any version of this project is installed locally
+  const isProjectInstalled = (title: string, slug: string) => {
+    const t = title.toLowerCase().trim();
+    const s = slug.toLowerCase().trim();
+
+    if (activeCategory === "mods") {
+      return mods.some((m) => {
+        const mn = m.name.toLowerCase().trim();
+        const fn = m.filename.toLowerCase().trim();
         return (
-          fn === checkName ||
-          mn.includes(checkSlug) ||
-          fn.includes(checkSlug) ||
-          mn.includes(title.toLowerCase())
+          mn === t ||
+          fn.includes(s) ||
+          mn.includes(s) ||
+          (s.length > 3 && fn.includes(s.replace(/[-_]/g, "")))
         );
       });
     }
 
     return installedItems.some((item) => {
-      const fn = item.filename.toLowerCase();
-      const n = item.name.toLowerCase();
+      const n = item.name.toLowerCase().trim();
+      const fn = item.filename.toLowerCase().trim();
       return (
-        fn === checkName ||
-        n.includes(checkSlug) ||
-        fn.includes(checkSlug) ||
-        n.includes(title.toLowerCase())
+        n === t ||
+        fn.includes(s) ||
+        n.includes(s) ||
+        (s.length > 3 && fn.includes(s.replace(/[-_]/g, "")))
       );
     });
   };
@@ -251,14 +290,54 @@ export const ModsView: React.FC<ModsViewProps> = ({
 
     setInstallingVersionId(version.id);
     try {
-      // Smart conflict resolution: Sodium 0.9.1 vs 0.9.2 on MC 26.2 Fabric
+      // 1. Remove previous / other version of this same project if present to avoid duplicate conflict
+      if (activeCategory === "mods") {
+        const slug = selectedProject.slug.toLowerCase().trim();
+        const title = selectedProject.title.toLowerCase().trim();
+        const existingOld = mods.find((m) => {
+          if (m.filename === version.file_name) return false;
+          const mn = m.name.toLowerCase().trim();
+          const fn = m.filename.toLowerCase().trim();
+          return (
+            fn.includes(slug) ||
+            mn.includes(slug) ||
+            mn === title ||
+            (slug.length > 3 && fn.includes(slug.replace(/[-_]/g, "")))
+          );
+        });
+        if (existingOld) {
+          onDeleteMod(existingOld.filename);
+        }
+      } else {
+        const slug = selectedProject.slug.toLowerCase().trim();
+        const title = selectedProject.title.toLowerCase().trim();
+        const existingOld = installedItems.find((item) => {
+          if (item.filename === version.file_name) return false;
+          const n = item.name.toLowerCase().trim();
+          const fn = item.filename.toLowerCase().trim();
+          return (
+            fn.includes(slug) ||
+            n.includes(slug) ||
+            n === title ||
+            (slug.length > 3 && fn.includes(slug.replace(/[-_]/g, "")))
+          );
+        });
+        if (existingOld) {
+          await safeInvoke("delete_content_item", {
+            instanceId: activeInstance.id,
+            category: activeCategory,
+            filename: existingOld.filename,
+          });
+        }
+      }
+
+      // 2. Smart conflict resolution: Sodium 0.9.1 vs 0.9.2 on MC 26.2 Fabric
       const isSodium = selectedProject.slug.toLowerCase().includes("sodium") || selectedProject.raw_id === "AANobbMI";
       const isIris = selectedProject.slug.toLowerCase().includes("iris") || selectedProject.raw_id === "YL57xq9U";
       const isMC26_2 = activeInstance.mc_version.includes("26.2");
 
       if (isSodium && isMC26_2 && mods.some((m) => m.filename.toLowerCase().includes("iris"))) {
         if (version.version_number.includes("0.9.2")) {
-          // Alert user or suggest 0.9.1
           const compat = projectVersions.find((v) => v.version_number.includes("0.9.1"));
           if (compat) {
             alert("Uwaga: Sodium 0.9.2 wyklucza Iris 1.11.2! Wybieramy wersję Sodium 0.9.1, która jest w 100% zgodna.");
@@ -894,7 +973,7 @@ export const ModsView: React.FC<ModsViewProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {catalogProjects.map((project) => {
-                const isInstalled = isItemInstalled(project.title, project.slug);
+                const isInstalled = isProjectInstalled(project.title, project.slug);
                 const isInstalling = installingVersionId === project.id;
                 const isModrinth = project.source === "modrinth";
 
@@ -1092,8 +1171,9 @@ export const ModsView: React.FC<ModsViewProps> = ({
                 </div>
               ) : (
                 filteredVersions.map((v) => {
-                  const isInstalled = isItemInstalled(selectedProject.title, selectedProject.slug, v.file_name);
+                  const isInstalled = isExactVersionInstalled(v.file_name, v.version_number);
                   const isDownloading = installingVersionId === v.id;
+                  const hasAnotherVersion = isProjectInstalled(selectedProject.title, selectedProject.slug);
 
                   // Release type styling
                   const relLower = v.release_type.toLowerCase();
@@ -1169,7 +1249,7 @@ export const ModsView: React.FC<ModsViewProps> = ({
 
                       <div className="shrink-0 self-end sm:self-center">
                         {isInstalled ? (
-                          <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold">
                             <Check size={13} />
                             <span>Zainstalowano</span>
                           </span>
@@ -1184,7 +1264,13 @@ export const ModsView: React.FC<ModsViewProps> = ({
                             ) : (
                               <ArrowDownToLine size={13} />
                             )}
-                            <span>{isDownloading ? "Pobieranie..." : "Zainstaluj tę wersję"}</span>
+                            <span>
+                              {isDownloading
+                                ? "Pobieranie..."
+                                : hasAnotherVersion
+                                ? "Zainstaluj (zamień)"
+                                : "Zainstaluj tę wersję"}
+                            </span>
                           </button>
                         )}
                       </div>
