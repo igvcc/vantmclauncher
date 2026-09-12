@@ -94,3 +94,13 @@ export interface LaunchLogPayload {
   line: string;
   is_error: boolean;
 }
+
+export interface SystemStats {
+  cpu_usage: number;
+  ram_used_mb: number;
+  ram_total_mb: number;
+  ram_pct: number;
+  cpu_temp: number | null;
+  thermal_status: string;
+}
+

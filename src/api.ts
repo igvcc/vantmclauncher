@@ -246,6 +246,15 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
       return false as unknown as T;
     case "get_running_instance_id":
       return null as unknown as T;
+    case "get_system_stats":
+      return {
+        cpu_usage: 12.8,
+        ram_used_mb: 8192,
+        ram_total_mb: 16384,
+        ram_pct: 50.0,
+        cpu_temp: 43.5,
+        thermal_status: "Optymalna",
+      } as unknown as T;
     default:
       return undefined as unknown as T;
   }

@@ -252,13 +252,13 @@ export const ModsView: React.FC<ModsViewProps> = ({
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Puzzle size={13} />
-            <span>Menedżer Modów</span>
+            <span>Centrum Modów</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Modyfikacje — <span className="text-neon-cyan">{activeInstance ? activeInstance.name : "Wybierz profil"}</span>
+            Mody — <span className="text-neon-cyan">{activeInstance ? activeInstance.name : "Wybierz profil"}</span>
           </h2>
           <p className="text-gray-400 text-xs mt-1">
-            Zarządzaj zainstalowanymi plikami lub przeszukuj 50 000+ modów z otwartego API Modrinth.
+            Przeciągaj pliki z dysku lub pobieraj mody jednym kliknięciem z bazy Modrinth.
           </p>
         </div>
 
@@ -267,7 +267,7 @@ export const ModsView: React.FC<ModsViewProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-xs font-semibold text-white transition-all cursor-pointer shadow-lg hover:border-cyan-400/40"
         >
           <FolderOpen size={16} className="text-neon-cyan" />
-          <span>Folder mods</span>
+          <span>Folder z modami</span>
         </button>
       </div>
 
@@ -316,10 +316,10 @@ export const ModsView: React.FC<ModsViewProps> = ({
               <UploadCloud size={30} />
             </div>
             <h3 className="font-heading font-extrabold text-base text-white mb-1">
-              Przeciągnij pliki .jar tutaj
+              Upuść pliki .jar tutaj
             </h3>
             <p className="text-xs text-gray-400 max-w-sm mb-4">
-              Launcher automatycznie rozpakuje metadane, sprawdzi kompatybilność i doda modyfikację do wybranej instancji.
+              Przeciągnij pobrany plik z komputera, a automatycznie dodamy go do Twojej gry.
             </p>
 
             <button
@@ -328,7 +328,7 @@ export const ModsView: React.FC<ModsViewProps> = ({
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-white transition-all cursor-pointer shadow-lg hover:border-cyan-400/50"
             >
               <PlusCircle size={15} className="text-neon-cyan" />
-              <span>Wybierz pliki .jar z dysku</span>
+              <span>Wybierz pliki z dysku</span>
             </button>
           </div>
 
@@ -337,7 +337,7 @@ export const ModsView: React.FC<ModsViewProps> = ({
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Filtruj zainstalowane mody..."
+              placeholder="Szukaj w zainstalowanych modach..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400/50 transition-colors"
@@ -349,14 +349,14 @@ export const ModsView: React.FC<ModsViewProps> = ({
             {isLoading ? (
               <div className="flex items-center justify-center p-12 text-gray-500">
                 <Loader2 size={24} className="animate-spin text-neon-cyan mr-3" />
-                <span className="text-sm">Odczytywanie modyfikacji...</span>
+                <span className="text-sm">Wczytywanie modów...</span>
               </div>
             ) : filteredMods.length === 0 ? (
               <div className="glass-panel rounded-3xl p-12 text-center text-gray-500">
                 <Puzzle size={40} className="mx-auto mb-3 opacity-30 text-neon-cyan" />
-                <p className="font-medium text-sm text-gray-400">Brak modyfikacji w tej instancji</p>
-                <p className="text-xs text-gray-600 mt-1">
-                  Przeciągnij pliki .jar lub przejdź do zakładki Katalog Modrinth.
+                <p className="font-medium text-sm text-gray-400">Brak modów w tym profilu</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Przeciągnij plik .jar lub kliknij w Katalog Modrinth powyżej, aby coś dodać.
                 </p>
               </div>
             ) : (

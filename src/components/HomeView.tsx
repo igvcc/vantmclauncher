@@ -79,7 +79,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               VΛNT <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-blue-400 to-purple-500 drop-shadow-[0_0_20px_rgba(0,242,255,0.3)]">DESKTOP</span>
             </h1>
             <p className="text-gray-400 text-xs tracking-wide mt-1">
-              Szybki, lekki i nowoczesny klient gry zoptymalizowany pod procesory Apple Silicon.
+              Wszystko gotowe do startu. Wybierz wersję, kliknij Graj i ruszaj do świata klocków.
             </p>
           </div>
         </div>
@@ -112,7 +112,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             <div className="flex-1 min-w-0">
               <label className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 block mb-1">
-                Profil Gracza (Non-Premium)
+                Twój nick w grze
               </label>
               <input
                 type="text"
@@ -121,14 +121,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 onBlur={handleNickBlur}
                 onKeyDown={handleNickKeyDown}
                 className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm font-semibold text-white w-full focus:outline-none focus:border-cyan-400 transition-colors"
-                placeholder="Wpisz swój nick..."
+                placeholder="Podaj swój nick..."
               />
               <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-400">
                 <span className="truncate font-mono">UUID: {offlineUuid ? offlineUuid.slice(0, 14) + "..." : "Generowanie..."}</span>
                 <button
                   onClick={handleCopyUuid}
                   className="p-1 hover:text-white transition-colors cursor-pointer"
-                  title="Skopiuj Offline UUID"
+                  title="Skopiuj identyfikator gracza"
                 >
                   {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                 </button>
@@ -141,10 +141,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex items-start justify-between">
               <div>
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 block mb-1">
-                  Aktywna Instancja
+                  Wybrany profil gry
                 </span>
                 <h3 className="text-lg font-heading font-bold text-white flex items-center gap-2">
-                  {activeInstance ? activeInstance.name : "Brak wybranej instancji"}
+                  {activeInstance ? activeInstance.name : "Wybierz profil do gry"}
                   {activeInstance && (
                     <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-400/15 border border-cyan-400/30 text-neon-cyan uppercase font-mono font-medium">
                       {activeInstance.loader} {activeInstance.mc_version}
@@ -174,7 +174,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-xs text-gray-300 hover:text-white transition-colors cursor-pointer"
               >
                 <Puzzle size={14} className="text-neon-cyan" />
-                <span>Zarządzaj modami (Drag & Drop)</span>
+                <span>Mody i dodatki</span>
               </button>
 
               <button
@@ -182,14 +182,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-xs text-gray-300 hover:text-white transition-colors cursor-pointer"
               >
                 <FolderOpen size={14} className="text-neon-cyan" />
-                <span>Otwórz folder</span>
+                <span>Folder gry</span>
               </button>
 
               <button
                 onClick={onGoToInstances}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 text-xs text-gray-300 hover:text-white transition-colors cursor-pointer ml-auto"
               >
-                <span>Wszystkie instancje ({instances.length})</span>
+                <span>Wszystkie profile ({instances.length})</span>
               </button>
             </div>
           </div>
@@ -202,10 +202,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <AlertTriangle className="text-amber-400" size={20} />
               <div>
                 <p className="text-sm font-semibold text-amber-200">
-                  Nie wykryto zainstalowanej Javy w Twoim systemie
+                  Potrzebujesz środowiska Java, aby odpalić Minecrafta
                 </p>
                 <p className="text-xs text-amber-400/80">
-                  Launcher może automatycznie pobrać Java 21 (Temurin OpenJDK) 1 kliknięciem.
+                  Jednym kliknięciem zainstalujemy dla Ciebie bezpieczne i szybkie środowisko Java 21 (Temurin OpenJDK).
                 </p>
               </div>
             </div>
@@ -213,7 +213,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               onClick={onGoToJava}
               className="px-4 py-2 rounded-xl bg-amber-500 text-black font-semibold text-xs hover:bg-amber-400 transition-all cursor-pointer shadow-lg"
             >
-              Pobierz Javę
+              Pobierz Javę 21
             </button>
           </div>
         )}
@@ -251,7 +251,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-6">
             <div>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Pamięć RAM</span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Przydzielony RAM</span>
               <span className="font-mono text-sm font-bold text-white flex items-baseline gap-1.5">
                 {((activeInstance?.memory_mb || settings.max_ram_mb) / 1024).toFixed(1)} GB
                 <span className="text-[11px] text-gray-400 font-normal">
@@ -261,7 +261,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
             <div className="h-8 w-px bg-white/10"></div>
             <div>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Silnik & Wersja</span>
+              <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Wersja i Silnik</span>
               <span className="font-mono text-sm font-bold text-neon-cyan uppercase">
                 {activeInstance ? `${activeInstance.loader} • ${activeInstance.mc_version}` : "Vanilla"}
               </span>
@@ -272,12 +272,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold text-xs tracking-wider">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                <span>GRA DZIAŁA W TLE</span>
+                <span>GRA JEST URUCHOMIONA</span>
               </div>
               <button
                 onClick={onKillGame}
                 className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-heading font-extrabold text-xs tracking-widest uppercase transition-all duration-300 cursor-pointer bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 hover:border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.35)]"
-                title="Wymuś natychmiastowe zakończenie procesu gry"
+                title="Wymuś natychmiastowe zakończenie gry"
               >
                 <Square size={16} fill="currentColor" />
                 <span>ZAMKNIJ GRĘ</span>
@@ -302,9 +302,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
               )}
               <span>
                 {isLaunching
-                  ? "URUCHAMIANIE..."
+                  ? "ODPALANIE..."
                   : !activeInstance
-                  ? "WYBIERZ INSTANCJĘ"
+                  ? "WYBIERZ PROFIL"
                   : "GRAJ"}
               </span>
             </button>

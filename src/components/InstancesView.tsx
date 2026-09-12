@@ -118,10 +118,10 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             <span>Profile i Wersje</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Zarządzanie Instancjami
+            Profile Gry
           </h2>
           <p className="text-gray-400 text-xs mt-1">
-            Twórz oddzielne profile gry dla różnych wersji Minecrafta i modloaderów.
+            Twórz osobne profile na mody, shadery lub czystą grę ze znajomymi.
           </p>
         </div>
 
@@ -130,7 +130,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
           className="btn-neon flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading font-bold text-xs tracking-wider uppercase cursor-pointer"
         >
           <Plus size={16} />
-          <span>Nowa Instancja</span>
+          <span>Nowy Profil</span>
         </button>
       </div>
 
@@ -149,7 +149,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             >
               {isActive && (
                 <div className="absolute top-0 right-0 px-3 py-1 bg-cyan-400 text-black font-bold text-[10px] tracking-wider uppercase rounded-bl-xl shadow-md">
-                  Aktywna
+                  Wybrany
                 </div>
               )}
 
@@ -174,12 +174,12 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
                 <div className="text-[11px] text-gray-400 flex flex-col gap-1 py-3 border-y border-white/5 my-3 font-mono">
                   <div className="flex justify-between">
-                    <span>Modloader:</span>
+                    <span>Silnik modów:</span>
                     <span className="text-gray-300 font-semibold uppercase">{inst.loader}</span>
                   </div>
                   {inst.loader_version && (
                     <div className="flex justify-between">
-                      <span>Wersja loadera:</span>
+                      <span>Wersja silnika:</span>
                       <span className="text-gray-300">{inst.loader_version}</span>
                     </div>
                   )}
@@ -205,14 +205,14 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                     className="flex-1 py-2 rounded-xl bg-neon-cyan text-black font-semibold text-xs hover:bg-cyan-300 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-neon-cyan"
                   >
                     <Play size={14} fill="currentColor" />
-                    <span>Zagraj</span>
+                    <span>Graj teraz</span>
                   </button>
                 )}
 
                 <button
                   onClick={() => onOpenFolder(inst.id)}
                   className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white transition-colors cursor-pointer"
-                  title="Otwórz folder instancji"
+                  title="Otwórz folder profilu"
                 >
                   <FolderOpen size={16} />
                 </button>
@@ -221,7 +221,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   <button
                     onClick={() => onDeleteInstance(inst.id)}
                     className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/10 border border-white/10 hover:border-rose-500/20 text-gray-400 hover:text-rose-400 transition-colors cursor-pointer"
-                    title="Usuń instancję"
+                    title="Usuń profil"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -237,7 +237,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
         <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="glass-panel rounded-3xl p-6 max-w-md w-full border border-white/10 shadow-2xl relative">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-xl font-heading font-bold text-white">Nowa Instancja</h3>
+              <h3 className="text-xl font-heading font-bold text-white">Nowy Profil Gry</h3>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
@@ -249,20 +249,20 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
             <form onSubmit={handleCreate} className="flex flex-col gap-4">
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">
-                  Nazwa Instancji
+                  Nazwa Profilu
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="np. Fabric 1.20.4 Mody"
+                  placeholder="np. Mody 1.20.4 ze znajomymi"
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400"
                 />
               </div>
 
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">
-                  Silnik (Modloader)
+                  Wybierz silnik modów
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {(["fabric", "vanilla", "forge", "neoforge", "quilt"] as const).map((l) => (
@@ -284,7 +284,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
               <div>
                 <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">
-                  Wersja Minecraft
+                  Wersja gry Minecraft
                 </label>
                 <select
                   value={mcVersion}
@@ -306,11 +306,11 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
-                      Wersja {loader.toUpperCase()}
+                      Wersja silnika {loader.toUpperCase()}
                     </label>
                     {isLoadingLoaders && (
                       <span className="flex items-center gap-1 text-[11px] text-neon-cyan">
-                        <Loader2 size={11} className="animate-spin" /> Pobieranie wersji...
+                        <Loader2 size={11} className="animate-spin" /> Sprawdzanie dostępnych wersji...
                       </span>
                     )}
                   </div>
@@ -331,7 +331,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                       type="text"
                       value={loaderVersion}
                       onChange={(e) => setLoaderVersion(e.target.value)}
-                      placeholder={isLoadingLoaders ? "Ładowanie wersji z API..." : "np. najnowsza"}
+                      placeholder={isLoadingLoaders ? "Sprawdzanie wersji z API..." : "np. najnowsza zalecana"}
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono"
                     />
                   )}
@@ -350,7 +350,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   type="submit"
                   className="flex-1 py-2.5 rounded-xl bg-neon-cyan text-black font-semibold text-xs hover:bg-cyan-300 transition-colors shadow-neon-cyan cursor-pointer"
                 >
-                  Utwórz
+                  Stwórz profil
                 </button>
               </div>
             </form>

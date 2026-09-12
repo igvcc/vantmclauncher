@@ -37,13 +37,13 @@ export const JavaView: React.FC<JavaViewProps> = ({
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Cpu size={13} />
-            <span>Środowisko Uruchomieniowe</span>
+            <span>Silnik Java</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Zarządzanie Środowiskiem Java
+            Wersje Javy
           </h2>
           <p className="text-gray-400 text-xs mt-1">
-            Minecraft wymaga środowiska Java (OpenJDK 21 dla najnowszych wersji, Java 17 lub 8 dla starszych).
+            Minecraft potrzebuje Javy do działania. Najnowsze wersje najlepiej działają na Java 21 — możesz ją zainstalować jednym kliknięciem poniżej.
           </p>
         </div>
 
@@ -52,7 +52,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"
         >
           <RefreshCw size={14} />
-          <span>Odśwież listę</span>
+          <span>Sprawdź ponownie</span>
         </button>
       </div>
 
@@ -63,12 +63,11 @@ export const JavaView: React.FC<JavaViewProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2.5 h-2.5 rounded-full bg-neon-cyan animate-pulse"></span>
               <h3 className="font-heading font-bold text-lg text-white">
-                Pobierz zalecaną wersję: Java 21 (Temurin OpenJDK)
+                Zainstaluj zalecaną Javę 21 (Temurin OpenJDK)
               </h3>
             </div>
             <p className="text-xs text-gray-400 max-w-xl">
-              Oficjalne, bezpłatne wydanie Eclipse Temurin OpenJDK zoptymalizowane pod architekturę Twojego komputera.
-              Launcher sam pobierze, rozpakuje i skonfiguruje środowisko.
+              Szybkie, bezpieczne i zoptymalizowane wydanie pod Twój procesor. Pobierzemy i skonfigurujemy wszystko w tle za Ciebie.
             </p>
           </div>
 
@@ -81,7 +80,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
               }`}
             >
               <Download size={16} />
-              <span>{isDownloadingJava ? "POBIERANIE..." : "POBIERZ JAVA 21"}</span>
+              <span>{isDownloadingJava ? "Instalowanie..." : "Zainstaluj Java 21"}</span>
             </button>
 
             <button
@@ -90,7 +89,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
               className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
               title="Java 17 (dla Minecraft 1.17 - 1.20.4)"
             >
-              Java 17
+              Java 17 (starsze wersje)
             </button>
           </div>
         </div>
@@ -115,14 +114,14 @@ export const JavaView: React.FC<JavaViewProps> = ({
       {/* Detected Java installations */}
       <div className="mb-8">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-          Wykryte instalacje Java na komputerze ({javaList.length})
+          Wykryte wersje Javy na Twoim komputerze ({javaList.length})
         </h3>
 
         {javaList.length === 0 ? (
           <div className="glass-panel rounded-2xl p-6 flex items-center gap-3 text-amber-300 border-amber-500/20">
             <AlertCircle size={20} className="text-amber-400 shrink-0" />
             <p className="text-xs">
-              Nie wykryto żadnej zainstalowanej wersji Javy. Użyj przycisku powyżej, aby pobrać Java 21 automatycznie.
+              Nie znaleźliśmy jeszcze żadnej Javy na dysku. Użyj przycisku u góry, a zainstalujemy Java 21 w kilka sekund.
             </p>
           </div>
         ) : (
@@ -150,7 +149,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
                         </span>
                         {j.is_arm64 && (
                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono">
-                            Apple Silicon ARM64
+                            Apple Silicon (szybka)
                           </span>
                         )}
                         {j.major_version >= 21 && (
@@ -173,7 +172,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
                         : "bg-white/5 hover:bg-white/10 text-gray-300"
                     }`}
                   >
-                    {isSelected ? "Wybrana" : "Użyj"}
+                    {isSelected ? "Wybrana" : "Wybierz tę"}
                   </button>
                 </div>
               );
@@ -185,10 +184,10 @@ export const JavaView: React.FC<JavaViewProps> = ({
       {/* Manual Custom Java Path */}
       <div className="glass-panel rounded-2xl p-6">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">
-          Własna ścieżka do pliku wykonywalnego Java
+          Własny plik Javy (opcjonalnie)
         </h3>
         <p className="text-xs text-gray-400 mb-4">
-          Możesz ręcznie wskazać ścieżkę do pliku `java` lub `java.exe` na dysku.
+          Jeśli masz własną wersję Javy w niestandardowym katalogu, wklej tutaj ścieżkę do pliku java.
         </p>
 
         <form onSubmit={handleSaveCustomPath} className="flex gap-3">
@@ -214,7 +213,7 @@ export const JavaView: React.FC<JavaViewProps> = ({
               }}
               className="px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/10 text-xs font-semibold text-gray-400 hover:text-rose-400 transition-colors cursor-pointer"
             >
-              Resetuj (Auto)
+              Przywróć automatyczną
             </button>
           )}
         </form>

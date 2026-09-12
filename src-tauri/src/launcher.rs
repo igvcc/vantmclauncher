@@ -111,28 +111,42 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         }
     }
 
-    // 4. Jeśli loader to Fabric, pobierz biblioteki Fabric i podmień mainClass
-    if instance.loader == "fabric" {
-        let loader_ver = instance.loader_version.as_deref().unwrap_or("0.15.11");
-        let fabric_profile_url = format!(
-            "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
-            instance.mc_version, loader_ver
-        );
+    // 4. Jeśli loader to Fabric lub Quilt, pobierz biblioteki i podmień mainClass
+    if instance.loader == "fabric" || instance.loader == "quilt" {
+        let (profile_url, loader_type_name) = if instance.loader == "quilt" {
+            let loader_ver = instance.loader_version.as_deref().unwrap_or("0.20.0-beta.9");
+            (
+                format!(
+                    "https://meta.quiltmc.org/v3/versions/loader/{}/{}/profile/json",
+                    instance.mc_version, loader_ver
+                ),
+                "Quilt",
+            )
+        } else {
+            let loader_ver = instance.loader_version.as_deref().unwrap_or("0.15.11");
+            (
+                format!(
+                    "https://meta.fabricmc.net/v2/versions/loader/{}/{}/profile/json",
+                    instance.mc_version, loader_ver
+                ),
+                "Fabric",
+            )
+        };
 
         let client = reqwest::Client::builder()
             .user_agent("VantMcLauncher/1.0")
             .build()
             .map_err(|e| e.to_string())?;
 
-        if let Ok(resp) = client.get(&fabric_profile_url).send().await {
+        if let Ok(resp) = client.get(&profile_url).send().await {
             if resp.status().is_success() {
-                if let Ok(fabric_json) = resp.json::<Value>().await {
-                    if let Some(mc) = fabric_json.get("mainClass").and_then(|m| m.as_str()) {
+                if let Ok(loader_json) = resp.json::<Value>().await {
+                    if let Some(mc) = loader_json.get("mainClass").and_then(|m| m.as_str()) {
                         main_class = mc.to_string();
                     }
 
-                    if let Some(libs) = fabric_json.get("libraries").and_then(|l| l.as_array()) {
-                        let mut fabric_items = Vec::new();
+                    if let Some(libs) = loader_json.get("libraries").and_then(|l| l.as_array()) {
+                        let mut loader_items = Vec::new();
                         for lib in libs {
                             if let (Some(name), Some(url)) = (
                                 lib.get("name").and_then(|n| n.as_str()),
@@ -143,7 +157,7 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
                                     let target_path = get_libraries_dir().join(&maven_path);
                                     classpath_entries.push(target_path.clone());
 
-                                    fabric_items.push(DownloadItem {
+                                    loader_items.push(DownloadItem {
                                         url: full_url,
                                         path: target_path,
                                         sha1: None,
@@ -153,7 +167,7 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
                             }
                         }
 
-                        download_items_concurrently(fabric_items, "Pobieranie bibliotek Fabric", &app_handle).await?;
+                        download_items_concurrently(loader_items, &format!("Pobieranie bibliotek {}", loader_type_name), &app_handle).await?;
                     }
                 }
             }
@@ -202,8 +216,15 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     {
         jvm_args.push("-XstartOnFirstThread".to_string());
 
-        if std::env::consts::ARCH == "aarch64" && !settings.jvm_args.contains("UseZGC") && !settings.jvm_args.contains("UseParallelGC") {
-            // Apple Silicon unified memory & low-latency Generational ZGC for Java 21
+        let has_any_gc = settings.jvm_args.contains("UseG1GC")
+            || settings.jvm_args.contains("UseZGC")
+            || settings.jvm_args.contains("UseParallelGC")
+            || settings.jvm_args.contains("UseSerialGC")
+            || settings.jvm_args.contains("UseShenandoahGC")
+            || settings.jvm_args.contains("UseEpsilonGC");
+
+        if std::env::consts::ARCH == "aarch64" && !has_any_gc {
+            // Apple Silicon unified memory & low-latency Generational ZGC for Java 21 only if user has not chosen another GC
             jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
             jvm_args.push("-XX:+UseZGC".to_string());
             jvm_args.push("-XX:+ZGenerational".to_string());

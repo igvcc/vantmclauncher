@@ -56,13 +56,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Sliders size={13} />
-            <span>Konfiguracja Klienta</span>
+            <span>Ustawienia launchera</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Ustawienia Główne
+            Ustawienia Gry i Wydajności
           </h2>
           <p className="text-gray-400 text-xs mt-1">
-            Zarządzaj przydziałem pamięci RAM, flagami maszyny JVM i lokalizacją danych.
+            Dostosuj przydział pamięci RAM i parametry uruchamiania do możliwości Twojego komputera.
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"
         >
           <FolderOpen size={15} className="text-neon-cyan" />
-          <span>Folder aplikacji</span>
+          <span>Otwórz folder gry</span>
         </button>
       </div>
 
@@ -79,10 +79,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Nickname card */}
         <div className="glass-panel rounded-2xl p-6">
           <h3 className="font-heading font-bold text-base text-white mb-1">
-            Domyślny Nick Gracza
+            Twój nick w grze
           </h3>
           <p className="text-xs text-gray-400 mb-4">
-            Nazwa gracza wykorzystywana przy logowaniu do serwerów Non-Premium.
+            Nazwa wyświetlana w świecie gry i na serwerach bez logowania premium.
           </p>
           <input
             type="text"
@@ -97,10 +97,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="font-heading font-bold text-base text-white">
-                Przydział Pamięci RAM
+                Pamięć operacyjna RAM
               </h3>
               <p className="text-xs text-gray-400 mt-0.5">
-                Więcej RAM-u jest zalecane w przypadku rozbudowanych paczek modów (Fabric / Forge).
+                Więcej pamięci pozwala na płynniejszą rozgrywkę przy dużej liczbie modów i shaderów.
               </p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="flex flex-col gap-4">
             <div>
               <div className="flex justify-between text-xs text-gray-400 mb-2">
-                <span>Maksymalna pamięć (-Xmx):</span>
+                <span>Maksymalna pamięć dla gry (-Xmx):</span>
                 <span className="font-mono text-neon-cyan font-bold">{maxRam} MB ({(maxRam / 1024).toFixed(1)} GB)</span>
               </div>
               <input
@@ -151,7 +151,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="glass-panel rounded-2xl p-6">
           <div className="flex items-center justify-between mb-2">
             <h3 className="font-heading font-bold text-base text-white">
-              Argumenty Wirtualnej Maszyny Java (JVM)
+              Dodatkowe parametry maszyny Java
             </h3>
             <div className="flex gap-2">
               <button
@@ -159,7 +159,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={applyAppleSiliconPreset}
                 className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-[11px] text-neon-cyan border border-cyan-400/30 transition-colors cursor-pointer font-semibold shadow-[0_0_10px_rgba(0,242,255,0.2)]"
               >
-                ⚡ Apple Silicon (ZGC)
+                ⚡ Apple Silicon (Optymalne)
               </button>
               <button
                 type="button"
@@ -173,12 +173,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={applySimplePreset}
                 className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-gray-400 border border-white/10 transition-colors cursor-pointer"
               >
-                Czysty
+                Domyślny
               </button>
             </div>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            Zaawansowane flagi optymalizujące garbage collector oraz zachowanie silnika graficznego.
+            Gotowe zestawy optymalizacji lub własne flagi startowe silnika.
           </p>
           <textarea
             rows={3}

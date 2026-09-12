@@ -15,6 +15,7 @@ import {
   JavaInstallation,
   DownloadProgress,
   LaunchLogPayload,
+  SystemStats,
 } from "./types";
 
 export default function App() {
@@ -62,6 +63,7 @@ export default function App() {
   const [isLaunching, setIsLaunching] = useState(false);
   const [isGameRunning, setIsGameRunning] = useState(false);
   const [runningInstanceId, setRunningInstanceId] = useState<string | null>(null);
+  const [systemStats, setSystemStats] = useState<SystemStats | null>(null);
 
   // Java download state
   const [isDownloadingJava, setIsDownloadingJava] = useState(false);
@@ -94,6 +96,15 @@ export default function App() {
       })
       .catch(console.error);
 
+    // Initial system hardware telemetry
+    invoke<SystemStats>("get_system_stats")
+      .then(setSystemStats)
+      .catch(console.error);
+
+    const unlistenStats = listen<SystemStats>("system-stats", (event) => {
+      setSystemStats(event.payload);
+    });
+
     // Listeners for Tauri backend events
     const unlistenProgress = listen<DownloadProgress>("download-progress", (event) => {
       setDownloadProgress(event.payload);
@@ -124,16 +135,21 @@ export default function App() {
       setIsLaunching(false);
       setIsGameRunning(true);
       setRunningInstanceId(event.payload.instance_id);
-      showToast("Gra Minecraft została uruchomiona!", "success");
+      showToast("Minecraft wystartował! Dobrej gry!", "success");
     });
 
     const unlistenGameStopped = listen<{ instance_id: string; exit_code: number }>("game-stopped", (event) => {
       setIsGameRunning(false);
       setRunningInstanceId(null);
-      showToast(`Proces gry został zakończony (kod wyjścia ${event.payload.exit_code})`, "info");
+      if (event.payload.exit_code === 0) {
+        showToast("Gra została zamknięta.", "info");
+      } else {
+        showToast(`Gra została zamknięta (kod: ${event.payload.exit_code})`, "info");
+      }
     });
 
     return () => {
+      unlistenStats.then((f) => f());
       unlistenProgress.then((f) => f());
       unlistenJavaProgress.then((f) => f());
       unlistenLogs.then((f) => f());
@@ -243,14 +259,14 @@ export default function App() {
       });
       setInstances((prev) => [created, ...prev]);
       handleSelectInstance(created.id);
-      showToast(`Utworzono instancję: ${created.name}`, "success");
+      showToast(`Twój nowy profil "${created.name}" jest gotowy!`, "success");
     } catch (err) {
-      showToast(`Błąd tworzenia: ${err}`, "error");
+      showToast(`Błąd tworzenia profilu: ${err}`, "error");
     }
   };
 
   const handleDeleteInstance = async (id: string) => {
-    if (!confirm("Czy na pewno chcesz usunąć tę instancję wraz ze wszystkimi modami i światami?")) {
+    if (!confirm("Czy na pewno chcesz usunąć ten profil gry wraz ze wszystkimi zapisanymi światami i modami?")) {
       return;
     }
     try {
@@ -262,7 +278,7 @@ export default function App() {
           handleSelectInstance(updated[0].id);
         }
       }
-      showToast("Instancja została usunięta", "info");
+      showToast("Profil został usunięty", "info");
     } catch (err) {
       showToast(String(err), "error");
     }
@@ -307,7 +323,7 @@ export default function App() {
 
   const handleInstallModFile = async (filePath: string) => {
     if (!activeInstance) {
-      showToast("Najpierw wybierz lub utwórz instancję", "error");
+      showToast("Wybierz najpierw profil gry, do którego chcesz dodać mod", "error");
       return;
     }
     try {
@@ -316,7 +332,7 @@ export default function App() {
         path: filePath,
       });
       setMods((prev) => [newMod, ...prev.filter((m) => m.filename !== newMod.filename)]);
-      showToast(`Zainstalowano mod: ${newMod.name}!`, "success");
+      showToast(`Mod "${newMod.name}" został pomyślnie dodany!`, "success");
       setActiveTab("mods");
     } catch (err) {
       showToast(String(err), "error");
@@ -325,7 +341,7 @@ export default function App() {
 
   const handleInstallModBytes = async (filename: string, bytes: number[]) => {
     if (!activeInstance) {
-      showToast("Najpierw wybierz lub utwórz instancję", "error");
+      showToast("Wybierz najpierw profil gry, do którego chcesz dodać mod", "error");
       return;
     }
     try {
@@ -335,7 +351,7 @@ export default function App() {
         bytes,
       });
       setMods((prev) => [newMod, ...prev.filter((m) => m.filename !== newMod.filename)]);
-      showToast(`Zainstalowano mod: ${newMod.name}!`, "success");
+      showToast(`Mod "${newMod.name}" został pomyślnie dodany!`, "success");
       setActiveTab("mods");
     } catch (err) {
       showToast(String(err), "error");
@@ -363,7 +379,7 @@ export default function App() {
 
   const handleLaunch = async () => {
     if (!activeInstance) {
-      showToast("Brak wybranej instancji!", "error");
+      showToast("Wybierz najpierw profil gry przed startem!", "error");
       return;
     }
 
@@ -373,7 +389,7 @@ export default function App() {
       current: 0,
       total: 100,
       percentage: 2.0,
-      message: "Przygotowywanie uruchomienia...",
+      message: "Przygotowywanie plików i weryfikacja...",
     });
 
     try {
@@ -392,9 +408,9 @@ export default function App() {
       await invoke("kill_game", { instanceId: targetId });
       setIsGameRunning(false);
       setRunningInstanceId(null);
-      showToast("Wysłano sygnał zatrzymania gry", "info");
+      showToast("Gra została zatrzymana", "info");
     } catch (err) {
-      showToast(`Błąd zatrzymywania: ${err}`, "error");
+      showToast(`Nie udało się zatrzymać gry: ${err}`, "error");
     }
   };
 
@@ -422,7 +438,7 @@ export default function App() {
       )}
 
       {/* Navigation Dock */}
-      <Dock activeTab={activeTab} setActiveTab={setActiveTab} isGameRunning={isGameRunning} />
+      <Dock activeTab={activeTab} setActiveTab={setActiveTab} isGameRunning={isGameRunning} systemStats={systemStats} />
 
       {/* Main Content Area */}
       <main className="flex-1 h-full overflow-hidden flex flex-col relative z-10">
@@ -496,7 +512,7 @@ export default function App() {
               const updated = { ...settings, ...patch };
               setSettings(updated);
               await invoke("save_settings", { settings: updated });
-              showToast("Zapisano ustawienia Javy", "success");
+              showToast("Zapisano wybraną wersję Javy", "success");
             }}
             onDownloadJava={handleDownloadJava}
             onRefreshJava={refreshJavaList}
@@ -506,17 +522,13 @@ export default function App() {
           />
         )}
 
-        {activeTab === "console" && (
-          <ConsoleView logs={logs} onClearLogs={() => setLogs([])} />
-        )}
-
         {activeTab === "settings" && (
           <SettingsView
             settings={settings}
             onSaveSettings={async (newSettings) => {
               setSettings(newSettings);
               await invoke("save_settings", { settings: newSettings });
-              showToast("Zapisano ustawienia główne!", "success");
+              showToast("Ustawienia zostały pomyślnie zapisane!", "success");
             }}
             onOpenAppDir={() => {
               if (activeInstance) {

@@ -1,4 +1,5 @@
-import { Home, Layers, Puzzle, Cpu, Terminal, Sliders } from "lucide-react";
+import { Home, Layers, Puzzle, Cpu, Terminal, Sliders, Activity, HardDrive, Thermometer } from "lucide-react";
+import { SystemStats } from "../types";
 
 export type TabType = "home" | "instances" | "mods" | "java" | "console" | "settings";
 
@@ -6,12 +7,13 @@ interface DockProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   isGameRunning?: boolean;
+  systemStats?: SystemStats | null;
 }
 
-export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunning }) => {
+export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunning, systemStats }) => {
   const navItems = [
     { id: "home" as TabType, label: "START", icon: Home },
-    { id: "instances" as TabType, label: "INSTANCJE", icon: Layers },
+    { id: "instances" as TabType, label: "PROFILE", icon: Layers },
     { id: "mods" as TabType, label: "MODY", icon: Puzzle },
     { id: "java" as TabType, label: "JAVA", icon: Cpu },
     { id: "console" as TabType, label: "KONSOLA", icon: Terminal },
@@ -41,8 +43,8 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunni
             <h1 className="font-heading font-extrabold text-lg tracking-widest text-white leading-none">
               VΛNT <span className="text-neon-cyan text-xs font-bold tracking-wider">CLIENT</span>
             </h1>
-            <p className="text-[10px] text-gray-400 tracking-wider uppercase font-medium mt-1">
-              {isGameRunning ? "Sesja w toku" : "System gotowy"}
+            <p className="text-[10px] text-gray-400 tracking-wider font-medium mt-1">
+              {isGameRunning ? "Gra jest w toku" : "Gotowy do gry"}
             </p>
           </div>
         </div>
@@ -73,28 +75,101 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunni
         </nav>
       </div>
 
-      {/* Footer info */}
-      <div className="px-3 py-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-400 flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <span>Wersja</span>
-          <span className="text-neon-cyan font-mono font-semibold">v1.0.0</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>Tryb</span>
-          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-            Non-Premium
-          </span>
-        </div>
-        {isGameRunning && (
-          <div className="flex items-center justify-between pt-1 border-t border-white/5">
-            <span className="text-gray-400">Proces</span>
-            <span className="text-emerald-400 font-bold flex items-center gap-1 text-[10px]">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              AKTYWNY
-            </span>
+      {/* Hardware Monitor & Footer Info */}
+      <div className="flex flex-col gap-2.5">
+        {systemStats && (
+          <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col gap-2 text-[11px] shadow-lg backdrop-blur-md">
+            <div className="flex items-center justify-between font-medium">
+              <span className="flex items-center gap-1.5 text-gray-300">
+                <Activity size={12} className="text-neon-cyan" />
+                <span className="font-semibold text-[10px] uppercase tracking-wider text-gray-300">Sprzęt</span>
+              </span>
+              <span className="text-[10px] text-gray-400 font-mono">
+                {systemStats.thermal_status}
+              </span>
+            </div>
+
+            {/* CPU */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="text-gray-400 flex items-center gap-1">
+                  <Cpu size={10} className="text-cyan-400" /> Procesor (CPU)
+                </span>
+                <span className="font-mono font-semibold text-white">{systemStats.cpu_usage}%</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    systemStats.cpu_usage > 80
+                      ? "bg-rose-500"
+                      : systemStats.cpu_usage > 50
+                      ? "bg-amber-400"
+                      : "bg-cyan-400"
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(5, systemStats.cpu_usage))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* RAM */}
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between items-center text-[10px]">
+                <span className="text-gray-400 flex items-center gap-1">
+                  <HardDrive size={10} className="text-purple-400" /> Pamięć (RAM)
+                </span>
+                <span className="font-mono font-semibold text-white">
+                  {(systemStats.ram_used_mb / 1024).toFixed(1)} / {(systemStats.ram_total_mb / 1024).toFixed(0)} GB
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 rounded-full ${
+                    systemStats.ram_pct > 85
+                      ? "bg-rose-500"
+                      : systemStats.ram_pct > 65
+                      ? "bg-amber-400"
+                      : "bg-purple-400"
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(5, systemStats.ram_pct))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Temperature */}
+            <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-white/5">
+              <span className="text-gray-400 flex items-center gap-1">
+                <Thermometer size={10} className="text-amber-400" /> Temperatura
+              </span>
+              <span className="font-mono font-semibold text-amber-300">
+                {systemStats.cpu_temp !== null ? `${systemStats.cpu_temp}°C` : systemStats.thermal_status}
+              </span>
+            </div>
           </div>
         )}
+
+        {/* Footer info */}
+        <div className="px-3 py-2.5 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] text-gray-400 flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span>Klient</span>
+            <span className="text-neon-cyan font-mono font-semibold">v1.0.0</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Tryb gry</span>
+            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+              Offline
+            </span>
+          </div>
+          {isGameRunning && (
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+              <span className="text-gray-400">Proces</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-1 text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                AKTYWNY
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </aside>
   );

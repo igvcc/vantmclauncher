@@ -52,13 +52,13 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Terminal size={13} />
-            <span>Konsola Procesu</span>
+            <span>Podgląd na żywo</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Konsola Systemowa & Logi
+            Konsola i Logi Gry
           </h2>
           <p className="text-gray-400 text-xs mt-1">
-            Podgląd na żywo komunikatów silnika gry, ładowanych modów i ewentualnych błędów.
+            Zobacz co dzieje się w tle: komunikaty silnika gry, ładowanie modów oraz ewentualne ostrzeżenia.
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
               title="Wymuś zakończenie procesu gry"
             >
               <Square size={13} fill="currentColor" />
-              <span>Zamknij Grę</span>
+              <span>Zatrzymaj grę</span>
             </button>
           )}
 
@@ -80,7 +80,7 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
             title="Kopiuj wszystkie logi"
           >
             {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-            <span>{copied ? "Skopiowano!" : "Kopiuj"}</span>
+            <span>{copied ? "Skopiowano!" : "Skopiuj logi"}</span>
           </button>
 
           <button
@@ -102,7 +102,7 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filtruj logi (np. error, fabric, audio)..."
+            placeholder="Szukaj w logach (np. błąd, fabric, audio)..."
             className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400"
           />
         </div>
@@ -115,9 +115,9 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
               onChange={(e) => setAutoScroll(e.target.checked)}
               className="accent-cyan-400 rounded cursor-pointer"
             />
-            <span>Auto-przewijanie</span>
+            <span>Automatyczne przewijanie</span>
           </label>
-          <span className="font-mono">Linii: {filteredLogs.length}</span>
+          <span className="font-mono">Liczba linii: {filteredLogs.length}</span>
         </div>
       </div>
 
@@ -126,7 +126,7 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isG
         {filteredLogs.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-500">
             <Terminal size={32} className="mb-2 opacity-40" />
-            <p>Konsola jest pusta. Po uruchomieniu gry logi pojawią się tutaj.</p>
+            <p>Konsola jest czysta. Gdy gra wystartuje, tutaj zobaczysz wszystkie komunikaty na żywo.</p>
           </div>
         ) : (
           <div className="space-y-0.5">

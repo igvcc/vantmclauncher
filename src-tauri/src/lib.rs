@@ -10,11 +10,18 @@ mod modrinth;
 mod mojang;
 mod mods;
 mod paths;
+mod system_stats;
 
 use launcher::GameProcessState;
 use models::{Instance, JavaInstallation, ModItem, UserSettings, VersionEntry};
 use modrinth::{ModrinthSearchResult, ModrinthVersion};
-use tauri::AppHandle;
+use std::sync::{Arc, Mutex};
+use system_stats::{SystemMonitor, SystemStats};
+use tauri::{AppHandle, Emitter};
+
+pub struct SystemMonitorState {
+    pub monitor: Arc<Mutex<SystemMonitor>>,
+}
 
 #[tauri::command]
 fn get_settings() -> UserSettings {
@@ -173,11 +180,37 @@ fn get_offline_uuid_cmd(nickname: String) -> String {
     auth::get_offline_uuid(&nickname)
 }
 
+#[tauri::command]
+fn get_system_stats(state: tauri::State<SystemMonitorState>) -> SystemStats {
+    let mut mon = state.monitor.lock().unwrap();
+    mon.get_stats()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let monitor_arc = Arc::new(Mutex::new(SystemMonitor::new()));
+    let monitor_for_bg = monitor_arc.clone();
+
     tauri::Builder::default()
         .manage(GameProcessState::default())
+        .manage(SystemMonitorState {
+            monitor: monitor_arc,
+        })
         .plugin(tauri_plugin_opener::init())
+        .setup(move |app| {
+            let app_h = app.handle().clone();
+            std::thread::spawn(move || {
+                loop {
+                    std::thread::sleep(std::time::Duration::from_millis(2000));
+                    let stats = {
+                        let mut m = monitor_for_bg.lock().unwrap();
+                        m.get_stats()
+                    };
+                    let _ = app_h.emit("system-stats", stats);
+                }
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_settings,
             save_settings,
@@ -204,7 +237,8 @@ pub fn run() {
             kill_game,
             is_game_running,
             get_running_instance_id,
-            get_offline_uuid_cmd
+            get_offline_uuid_cmd,
+            get_system_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
