@@ -28,21 +28,27 @@ Nowoczesny, szybki i lekki launcher Minecrafta napisany w **Rust (Tauri 2)** z i
 
 ---
 
-## 🎮 Jak uruchomić aplikację?
+## 🚀 Uruchamianie i Budowanie
 
-### Sposób 1: Gotowa aplikacja macOS (.app)
-Aplikacja została skompilowana i znajduje się bezpośrednio w katalogu projektu:
-```bash
-open /Users/igorpienkny/Desktop/VantMcLauncher/VantMcLauncher.app
-```
-(Możesz również po prostu dwukrotnie kliknąć plik **`VantMcLauncher.app`** w Finderze na pulpicie).
+### 1. Wymagania wstępne
+- **Node.js** (v18+) oraz **npm**
+- **Rust** i **Cargo** (zainstalowane np. przez `rustup`)
+- Zależności systemowe Tauri dla Twojej platformy (macOS: Xcode CLI Tools, Linux: `webkit2gtk`, Windows: WebView2)
 
-### Sposób 2: Uruchomienie deweloperskie z podglądem na żywo (Hot Reload)
+### 2. Uruchomienie w trybie deweloperskim (Hot Reload)
 ```bash
+# Instalacja zależności frontendowych
+npm install
+
+# Uruchomienie aplikacji w środowisku Tauri
 npm run tauri dev
 ```
 
-### Sposób 3: Budowanie instalatora produkcyjnego
+### 3. Kompilacja wersji produkcyjnej (Instalator)
+Aby wygenerować gotowy plik wykonywalny / instalator dla Twojego systemu (macOS: `.dmg` / `.app`, Windows: `.msi` / `.exe`, Linux: `.deb` / `.AppImage`):
 ```bash
 npm run tauri build
 ```
+Zbudowana paczka pojawi się w katalogu:
+`src-tauri/target/release/bundle/`
+
