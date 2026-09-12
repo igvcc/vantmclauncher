@@ -213,10 +213,11 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         format!("-Djava.library.path={}", natives_dir.to_string_lossy()),
         "-Dminecraft.launcher.brand=VantMcLauncher".to_string(),
         "-Dminecraft.launcher.version=1.0.0".to_string(),
+        "-XX:+UnlockExperimentalVMOptions".to_string(),
     ];
 
     for arg in settings.jvm_args.split_whitespace() {
-        if !arg.is_empty() {
+        if !arg.is_empty() && arg != "-XX:+UnlockExperimentalVMOptions" {
             jvm_args.push(arg.to_string());
         }
     }
@@ -912,7 +913,7 @@ fn extract_natives(jar_path: &Path, natives_dir: &Path) {
             for i in 0..archive.len() {
                 if let Ok(mut entry) = archive.by_index(i) {
                     let name = entry.name().to_string();
-                    if name.ends_with(".dylib") || name.ends_with(".so") || name.ends_with(".dll") {
+                    if name.ends_with(".dylib") || name.ends_with(".jnilib") || name.ends_with(".so") || name.ends_with(".dll") {
                         if let Some(file_name) = Path::new(&name).file_name() {
                             let dest = natives_dir.join(file_name);
                             if let Ok(mut out_file) = File::create(&dest) {
@@ -922,6 +923,12 @@ fn extract_natives(jar_path: &Path, natives_dir: &Path) {
                                     use std::os::unix::fs::PermissionsExt;
                                     let _ = fs::set_permissions(&dest, fs::Permissions::from_mode(0o755));
                                 }
+                            }
+                            let fname_str = file_name.to_string_lossy();
+                            if fname_str.ends_with(".jnilib") {
+                                let dylib_name = fname_str.replace(".jnilib", ".dylib");
+                                let dylib_dest = natives_dir.join(dylib_name);
+                                let _ = fs::copy(&dest, &dylib_dest);
                             }
                         }
                     }
