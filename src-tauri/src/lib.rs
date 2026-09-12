@@ -181,9 +181,9 @@ fn get_offline_uuid_cmd(nickname: String) -> String {
 }
 
 #[tauri::command]
-fn get_system_stats(state: tauri::State<SystemMonitorState>) -> SystemStats {
+fn get_system_stats(app_handle: AppHandle, state: tauri::State<SystemMonitorState>) -> SystemStats {
     let mut mon = state.monitor.lock().unwrap();
-    mon.get_stats()
+    mon.get_stats(Some(&app_handle))
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -204,7 +204,7 @@ pub fn run() {
                     std::thread::sleep(std::time::Duration::from_millis(2000));
                     let stats = {
                         let mut m = monitor_for_bg.lock().unwrap();
-                        m.get_stats()
+                        m.get_stats(Some(&app_h))
                     };
                     let _ = app_h.emit("system-stats", stats);
                 }

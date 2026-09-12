@@ -144,6 +144,36 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunni
                 {systemStats.cpu_temp !== null ? `${systemStats.cpu_temp}°C` : systemStats.thermal_status}
               </span>
             </div>
+
+            {/* Minecraft RAM (when game is active) */}
+            {systemStats.minecraft_ram_mb !== null && systemStats.minecraft_ram_mb !== undefined && (
+              <div className="flex flex-col gap-1 pt-1.5 border-t border-white/5">
+                <div className="flex justify-between items-center text-[10px]">
+                  <span className="text-neon-cyan font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse" /> Minecraft RAM
+                  </span>
+                  <span className="font-mono font-bold text-neon-cyan">
+                    {systemStats.minecraft_ram_mb >= 1024
+                      ? `${(systemStats.minecraft_ram_mb / 1024).toFixed(2)} GB`
+                      : `${systemStats.minecraft_ram_mb} MB`}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-cyan-950/40 border border-cyan-500/20 overflow-hidden">
+                  <div
+                    className="h-full bg-neon-cyan rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,242,255,0.5)]"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.max(
+                          8,
+                          (systemStats.minecraft_ram_mb / Math.max(1, systemStats.ram_total_mb)) * 100 * 2.5
+                        )
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

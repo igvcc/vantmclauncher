@@ -460,6 +460,7 @@ export default function App() {
             isLaunching={isLaunching}
             offlineUuid={offlineUuid}
             javaCount={javaList.length}
+            systemStats={systemStats}
           />
         )}
 

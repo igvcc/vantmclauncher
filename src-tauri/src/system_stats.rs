@@ -1,5 +1,6 @@
 use serde::Serialize;
-use sysinfo::{Components, System};
+use sysinfo::{Components, System, Pid, ProcessesToUpdate};
+use tauri::{AppHandle, Manager};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SystemStats {
@@ -9,6 +10,7 @@ pub struct SystemStats {
     pub ram_pct: f32,
     pub cpu_temp: Option<f32>,
     pub thermal_status: String,
+    pub minecraft_ram_mb: Option<u64>,
 }
 
 pub struct SystemMonitor {
@@ -22,7 +24,7 @@ impl SystemMonitor {
         Self { sys }
     }
 
-    pub fn get_stats(&mut self) -> SystemStats {
+    pub fn get_stats(&mut self, app_handle: Option<&AppHandle>) -> SystemStats {
         self.sys.refresh_cpu_usage();
         self.sys.refresh_memory();
 
@@ -92,6 +94,31 @@ impl SystemMonitor {
         }
         .to_string();
 
+        // Sprawdź zużycie RAM przez uruchomiony proces Minecrafta
+        let mut minecraft_ram_mb: Option<u64> = None;
+        if let Some(h) = app_handle {
+            if let Some(state) = h.try_state::<crate::launcher::GameProcessState>() {
+                if let Ok(map) = state.running_processes.lock() {
+                    let pids: Vec<u32> = map.values().copied().collect();
+                    if !pids.is_empty() {
+                        let sysinfo_pids: Vec<Pid> = pids.iter().map(|&p| Pid::from(p as usize)).collect();
+                        self.sys.refresh_processes(ProcessesToUpdate::Some(&sysinfo_pids), true);
+                        let mut total_mc_bytes = 0u64;
+                        let mut found_any = false;
+                        for pid_val in sysinfo_pids {
+                            if let Some(proc) = self.sys.process(pid_val) {
+                                total_mc_bytes += proc.memory();
+                                found_any = true;
+                            }
+                        }
+                        if found_any {
+                            minecraft_ram_mb = Some(total_mc_bytes / 1024 / 1024);
+                        }
+                    }
+                }
+            }
+        }
+
         SystemStats {
             cpu_usage: (cpu_usage * 10.0).round() / 10.0,
             ram_used_mb,
@@ -99,6 +126,7 @@ impl SystemMonitor {
             ram_pct: (ram_pct * 10.0).round() / 10.0,
             cpu_temp: cpu_temp.map(|t| (t * 10.0).round() / 10.0),
             thermal_status,
+            minecraft_ram_mb,
         }
     }
 }

@@ -254,6 +254,7 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
         ram_pct: 50.0,
         cpu_temp: 43.5,
         thermal_status: "Optymalna",
+        minecraft_ram_mb: 1840,
       } as unknown as T;
     default:
       return undefined as unknown as T;

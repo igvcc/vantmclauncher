@@ -102,5 +102,6 @@ export interface SystemStats {
   ram_pct: number;
   cpu_temp: number | null;
   thermal_status: string;
+  minecraft_ram_mb?: number | null;
 }
 

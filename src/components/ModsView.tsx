@@ -9,7 +9,6 @@ import {
   Puzzle,
   PlusCircle,
   AlertTriangle,
-  FileCode,
   Sparkles,
   Loader2,
   ArrowDownToLine,
@@ -360,68 +359,97 @@ export const ModsView: React.FC<ModsViewProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {filteredMods.map((mod) => (
-                  <div
-                    key={mod.filename}
-                    className={`glass-panel rounded-2xl p-4 transition-all duration-200 border flex items-center justify-between gap-4 ${
-                      mod.enabled
-                        ? "border-white/10 hover:border-cyan-500/30 hover:bg-white/[0.04]"
-                        : "border-white/5 opacity-50 bg-black/40"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0">
-                      <div className="w-12 h-12 rounded-xl bg-black/50 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
-                        {mod.icon_base64 ? (
-                          <img
-                            src={mod.icon_base64}
-                            alt={mod.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLElement).style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          <FileCode size={22} className={mod.enabled ? "text-neon-cyan" : "text-gray-500"} />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-heading font-bold text-sm text-white truncate">{mod.name}</h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/5">
-                            v{mod.version}
-                          </span>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5">
+                {filteredMods.map((mod) => {
+                  const cleanedDesc = mod.description
+                    .replace(/^['"]{1,3}|['"]{1,3}$/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                  const displayDesc = cleanedDesc.length > 0 && cleanedDesc !== "'''" && cleanedDesc !== "\"\"\""
+                    ? cleanedDesc
+                    : "Modyfikacja gry Minecraft";
+
+                  const cleanedVer = mod.version.split("#")[0].replace(/^["']|["']$/g, "").trim();
+                  const displayVer = cleanedVer.startsWith("v") ? cleanedVer : `v${cleanedVer}`;
+
+                  const cleanName = mod.name.replace(/^["']|["']$/g, "").trim();
+                  const words = cleanName.replace(/[^a-zA-Z0-9\s]/g, "").trim().split(/\s+/);
+                  const initials = words.length >= 2
+                    ? (words[0][0] + words[1][0]).toUpperCase()
+                    : cleanName.slice(0, 2).toUpperCase() || "MD";
+
+                  return (
+                    <div
+                      key={mod.filename}
+                      className={`glass-panel rounded-2xl p-4 transition-all duration-200 border flex items-center justify-between gap-4 ${
+                        mod.enabled
+                          ? "border-white/10 hover:border-cyan-500/30 hover:bg-white/[0.04]"
+                          : "border-white/5 opacity-60 bg-black/40"
+                      }`}
+                    >
+                      <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className="w-13 h-13 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden shadow-md">
+                          {mod.icon_base64 ? (
+                            <img
+                              src={mod.icon_base64}
+                              alt={cleanName}
+                              className="w-full h-full object-cover rounded-xl"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-cyan-950/80 via-black to-purple-950/60 flex items-center justify-center border border-cyan-500/20 text-neon-cyan font-heading font-black text-sm shadow-inner">
+                              {initials}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-400 truncate mt-0.5 max-w-xs">{mod.description}</p>
-                        {mod.authors.length > 0 && (
-                          <p className="text-[10px] text-gray-500 truncate mt-0.5">Autorzy: {mod.authors.join(", ")}</p>
-                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 mb-1">
+                            <h4 className="font-heading font-bold text-sm text-white truncate" title={cleanName}>
+                              {cleanName}
+                            </h4>
+                            <span
+                              className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/5 text-gray-300 border border-white/10 max-w-[120px] truncate"
+                              title={displayVer}
+                            >
+                              {displayVer}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed" title={displayDesc}>
+                            {displayDesc}
+                          </p>
+                          {mod.authors.length > 0 && (
+                            <p className="text-[10px] text-gray-500 truncate mt-1">Autorzy: {mod.authors.join(", ")}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <button
+                          onClick={() => onToggleMod(mod.filename)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                            mod.enabled
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
+                              : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white"
+                          }`}
+                        >
+                          {mod.enabled ? <CheckCircle size={13} /> : <XCircle size={13} />}
+                          <span>{mod.enabled ? "Włączony" : "Wyłączony"}</span>
+                        </button>
+
+                        <button
+                          onClick={() => setModPendingDelete(mod.filename)}
+                          className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer"
+                          title="Usuń moda"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => onToggleMod(mod.filename)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                          mod.enabled
-                            ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-                            : "bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 hover:text-white"
-                        }`}
-                      >
-                        {mod.enabled ? <CheckCircle size={13} /> : <XCircle size={13} />}
-                        <span>{mod.enabled ? "Włączony" : "Wyłączony"}</span>
-                      </button>
-
-                      <button
-                        onClick={() => setModPendingDelete(mod.filename)}
-                        className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all cursor-pointer"
-                        title="Usuń moda"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

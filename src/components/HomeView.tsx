@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Play, FolderOpen, Puzzle, Copy, Check, Sparkles, AlertTriangle, Loader2, Square } from "lucide-react";
-import { Instance, UserSettings, DownloadProgress } from "../types";
+import { Play, FolderOpen, Puzzle, Copy, Check, AlertTriangle, Loader2, Square } from "lucide-react";
+import { Instance, UserSettings, DownloadProgress, SystemStats } from "../types";
 
 interface HomeViewProps {
   settings: UserSettings;
@@ -19,6 +19,7 @@ interface HomeViewProps {
   isGameRunning?: boolean;
   offlineUuid: string;
   javaCount: number;
+  systemStats?: SystemStats | null;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -38,6 +39,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   isGameRunning,
   offlineUuid,
   javaCount,
+  systemStats,
 }) => {
   const [copied, setCopied] = useState(false);
   const [tempNick, setTempNick] = useState(settings.nickname);
@@ -63,27 +65,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-8 flex flex-col justify-between relative z-10">
-      {/* Top Section: Hero & Player Profile */}
+      {/* Top Section: Player Profile & Active Instance */}
       <div>
-        {/* Hero title in vant.fun style with logo */}
-        <div className="flex items-center gap-5 mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-center p-2.5 shadow-[0_0_30px_rgba(139,92,246,0.25)] shrink-0">
-            <img src="/logo.png" alt="Vant Ribbon" className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(0,242,255,0.4)]" />
-          </div>
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-1.5">
-              <Sparkles size={13} />
-              <span>VΛNT CLIENT</span>
-            </div>
-            <h1 className="text-3xl font-heading font-extrabold text-white tracking-tight leading-none">
-              VΛNT <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-blue-400 to-purple-500 drop-shadow-[0_0_20px_rgba(0,242,255,0.3)]">DESKTOP</span>
-            </h1>
-            <p className="text-gray-400 text-xs tracking-wide mt-1">
-              Wszystko gotowe do startu. Wybierz wersję, kliknij Graj i ruszaj do świata klocków.
-            </p>
-          </div>
-        </div>
-
         {/* Player Profile & Active Instance Row */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           {/* Player Card */}
@@ -251,12 +234,29 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex items-center justify-between gap-6">
           <div className="flex items-center gap-6">
             <div>
-              <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Przydzielony RAM</span>
+              <span className="text-[10px] uppercase tracking-wider block font-semibold text-gray-400">
+                {isGameRunning ? "Zużycie RAM (Minecraft)" : "Przydzielony RAM"}
+              </span>
               <span className="font-mono text-sm font-bold text-white flex items-baseline gap-1.5">
-                {((activeInstance?.memory_mb || settings.max_ram_mb) / 1024).toFixed(1)} GB
-                <span className="text-[11px] text-gray-400 font-normal">
-                  ({activeInstance?.memory_mb || settings.max_ram_mb} MB)
-                </span>
+                {isGameRunning && systemStats?.minecraft_ram_mb ? (
+                  <>
+                    <span className="text-neon-cyan">
+                      {systemStats.minecraft_ram_mb >= 1024
+                        ? `${(systemStats.minecraft_ram_mb / 1024).toFixed(2)} GB`
+                        : `${systemStats.minecraft_ram_mb} MB`}
+                    </span>
+                    <span className="text-[11px] text-gray-400 font-normal">
+                      / {((activeInstance?.memory_mb || settings.max_ram_mb) / 1024).toFixed(1)} GB
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    {((activeInstance?.memory_mb || settings.max_ram_mb) / 1024).toFixed(1)} GB
+                    <span className="text-[11px] text-gray-400 font-normal">
+                      ({activeInstance?.memory_mb || settings.max_ram_mb} MB)
+                    </span>
+                  </>
+                )}
               </span>
             </div>
             <div className="h-8 w-px bg-white/10"></div>
