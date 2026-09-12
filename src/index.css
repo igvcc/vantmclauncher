@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --neon-cyan: #00F2FF;
+  --neon-violet: #8B5CF6;
+  --bg-deep: #0D0D0D;
+  --bg-card: rgba(18, 18, 22, 0.75);
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0D0D0D;
+  color: #FFFFFF;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+}
+
+/* Ambient glow inspired by vant.fun */
+.ambient-glow {
+  position: fixed;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(0, 242, 255, 0.12) 0%, rgba(139, 92, 246, 0.05) 50%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(50px);
+}
+
+.ambient-glow-bottom {
+  position: fixed;
+  bottom: -150px;
+  right: -50px;
+  width: 500px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(0, 242, 255, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+}
+
+/* Glass Card */
+.glass-panel {
+  background: rgba(18, 18, 22, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-panel-hover:hover {
+  background: rgba(26, 26, 32, 0.85);
+  border-color: rgba(0, 242, 255, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 242, 255, 0.08);
+}
+
+/* Dock styling matching vant.fun */
+.vant-dock {
+  background: rgba(14, 14, 17, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dock-pill-active {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Neon button */
+.btn-neon {
+  background: linear-gradient(135deg, rgba(0, 242, 255, 0.2) 0%, rgba(0, 242, 255, 0.05) 100%);
+  border: 1px solid #00F2FF;
+  color: #FFFFFF;
+  box-shadow: 0 0 18px rgba(0, 242, 255, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-neon:hover {
+  background: #00F2FF;
+  color: #000000;
+  box-shadow: 0 0 30px rgba(0, 242, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.btn-neon:active {
+  transform: translateY(1px);
+}
+
+/* Custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 255, 0.4);
+}
