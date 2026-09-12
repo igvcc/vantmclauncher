@@ -96,12 +96,16 @@ const MOCK_JAVA: JavaInstallation[] = [
 ];
 
 const MOCK_VERSIONS: VersionEntry[] = [
+  { id: "26.2", type: "release", url: "", release_time: "2026-06-16" },
   { id: "1.20.4", type: "release", url: "", release_time: "2023-12-07" },
   { id: "1.20.2", type: "release", url: "", release_time: "2023-09-21" },
   { id: "1.20.1", type: "release", url: "", release_time: "2023-06-12" },
   { id: "1.19.4", type: "release", url: "", release_time: "2023-03-14" },
   { id: "1.18.2", type: "release", url: "", release_time: "2022-02-28" },
   { id: "1.16.5", type: "release", url: "", release_time: "2021-01-15" },
+  { id: "1.12.2", type: "release", url: "", release_time: "2017-09-18" },
+  { id: "1.8.9", type: "release", url: "", release_time: "2015-12-09" },
+  { id: "1.2.5", type: "release", url: "", release_time: "2012-03-29" },
 ];
 
 export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Promise<T> {

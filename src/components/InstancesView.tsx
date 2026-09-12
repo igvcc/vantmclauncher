@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2, Search } from "lucide-react";
 import { Instance, VersionEntry } from "../types";
 import { safeInvoke } from "../api";
@@ -36,7 +36,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [name, setName] = useState("");
-  const [mcVersion, setMcVersion] = useState("1.20.4");
+  const [mcVersion, setMcVersion] = useState("26.2");
   const [loader, setLoader] = useState<"fabric" | "vanilla" | "forge" | "neoforge" | "quilt">("fabric");
   const [loaderVersion, setLoaderVersion] = useState("");
   const [loaderVersionsList, setLoaderVersionsList] = useState<string[]>([]);
@@ -44,6 +44,17 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [showSnapshots, setShowSnapshots] = useState(false);
   const [mcVersionSearch, setMcVersionSearch] = useState("");
   const [loaderVersionSearch, setLoaderVersionSearch] = useState("");
+  const hasInitializedVersion = useRef(false);
+
+  useEffect(() => {
+    if (availableVersions.length > 0 && !hasInitializedVersion.current) {
+      hasInitializedVersion.current = true;
+      const latest = availableVersions.find((v) => v.type === "release");
+      if (latest) {
+        setMcVersion(latest.id);
+      }
+    }
+  }, [availableVersions]);
 
   useEffect(() => {
     let active = true;
@@ -98,12 +109,13 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   }, [loader, fabricLoaders]);
 
   const filteredMcVersions = useMemo(() => {
+    const query = mcVersionSearch.trim().toLowerCase();
     return availableVersions.filter((v) => {
+      if (query) {
+        return v.id.toLowerCase().includes(query) || v.type.toLowerCase().includes(query);
+      }
       if (!showSnapshots && v.type !== "release") {
         return false;
-      }
-      if (mcVersionSearch.trim()) {
-        return v.id.toLowerCase().includes(mcVersionSearch.toLowerCase().trim());
       }
       return true;
     });
@@ -331,7 +343,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Szukaj wersji (np. 1.20, 1.16.5, 1.12.2, 1.7.10, 24w)..."
+                    placeholder="Szukaj wersji (np. 26.2, 1.2.5, 1.20.4, 1.16.5, 1.12.2, 26w)..."
                     value={mcVersionSearch}
                     onChange={(e) => setMcVersionSearch(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"

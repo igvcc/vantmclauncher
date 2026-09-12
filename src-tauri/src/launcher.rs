@@ -257,26 +257,46 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     jvm_args.push(classpath_str);
     jvm_args.push(main_class);
 
-    let mut game_args = vec![
-        "--username".to_string(),
-        settings.nickname.clone(),
-        "--version".to_string(),
-        instance.mc_version.clone(),
-        "--gameDir".to_string(),
-        instance_dir.to_string_lossy().to_string(),
-        "--assetsDir".to_string(),
-        get_assets_dir().to_string_lossy().to_string(),
-        "--assetIndex".to_string(),
-        asset_index_id.to_string(),
-        "--uuid".to_string(),
-        offline_uuid,
-        "--accessToken".to_string(),
-        "0".to_string(),
-        "--userType".to_string(),
-        "legacy".to_string(),
-        "--versionType".to_string(),
-        "VantMcLauncher".to_string(),
-    ];
+    let mut game_args = Vec::new();
+    if let Some(raw_mc_args) = vanilla_json.get("minecraftArguments").and_then(|m| m.as_str()) {
+        let session_token = format!("token:0:{}", offline_uuid);
+        for part in raw_mc_args.split_whitespace() {
+            let replaced = part
+                .replace("${auth_player_name}", &settings.nickname)
+                .replace("${auth_session}", &session_token)
+                .replace("${auth_uuid}", &offline_uuid)
+                .replace("${auth_access_token}", "0")
+                .replace("${game_directory}", &instance_dir.to_string_lossy())
+                .replace("${game_assets}", &get_assets_dir().to_string_lossy())
+                .replace("${assets_root}", &get_assets_dir().to_string_lossy())
+                .replace("${version_name}", &instance.mc_version)
+                .replace("${version_type}", "VantMcLauncher")
+                .replace("${user_type}", "legacy")
+                .replace("${user_properties}", "{}");
+            game_args.push(replaced);
+        }
+    } else {
+        game_args = vec![
+            "--username".to_string(),
+            settings.nickname.clone(),
+            "--version".to_string(),
+            instance.mc_version.clone(),
+            "--gameDir".to_string(),
+            instance_dir.to_string_lossy().to_string(),
+            "--assetsDir".to_string(),
+            get_assets_dir().to_string_lossy().to_string(),
+            "--assetIndex".to_string(),
+            asset_index_id.to_string(),
+            "--uuid".to_string(),
+            offline_uuid,
+            "--accessToken".to_string(),
+            "0".to_string(),
+            "--userType".to_string(),
+            "legacy".to_string(),
+            "--versionType".to_string(),
+            "VantMcLauncher".to_string(),
+        ];
+    }
     game_args.extend(extra_forge_game_args);
 
     let full_args: Vec<String> = jvm_args.into_iter().chain(game_args).collect();
