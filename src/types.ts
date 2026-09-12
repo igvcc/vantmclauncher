@@ -5,6 +5,45 @@ export interface UserSettings {
   max_ram_mb: number;
   jvm_args: string;
   selected_instance_id: string | null;
+  arm_optimization?: boolean;
+}
+
+export interface ModrinthMod {
+  project_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon_url: string | null;
+  downloads: number;
+  follows?: number;
+  categories: string[];
+  client_side?: string;
+  server_side?: string;
+  author: string;
+}
+
+export interface ModrinthSearchResult {
+  hits: ModrinthMod[];
+  offset: number;
+  limit: number;
+  total_hits: number;
+}
+
+export interface ModrinthFile {
+  url: string;
+  filename: string;
+  primary: boolean;
+  size: number;
+}
+
+export interface ModrinthVersion {
+  id: string;
+  project_id: string;
+  name: string;
+  version_number: string;
+  game_versions: string[];
+  loaders: string[];
+  files: ModrinthFile[];
 }
 
 export interface Instance {

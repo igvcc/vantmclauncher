@@ -60,6 +60,8 @@ export default function App() {
   const [logs, setLogs] = useState<LaunchLogPayload[]>([]);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isGameRunning, setIsGameRunning] = useState(false);
+  const [runningInstanceId, setRunningInstanceId] = useState<string | null>(null);
 
   // Java download state
   const [isDownloadingJava, setIsDownloadingJava] = useState(false);
@@ -79,6 +81,18 @@ export default function App() {
   // 1. Initial data loading
   useEffect(() => {
     loadInitialData();
+
+    // Check if game is already running on mount
+    invoke<boolean>("is_game_running")
+      .then((running) => {
+        setIsGameRunning(running);
+        if (running) {
+          invoke<string | null>("get_running_instance_id")
+            .then((id) => setRunningInstanceId(id))
+            .catch(console.error);
+        }
+      })
+      .catch(console.error);
 
     // Listeners for Tauri backend events
     const unlistenProgress = listen<DownloadProgress>("download-progress", (event) => {
@@ -106,9 +120,17 @@ export default function App() {
       setLogs((prev) => [...prev.slice(-1000), event.payload]);
     });
 
-    const unlistenGameStarted = listen<{ instance_id: string }>("game-started", () => {
+    const unlistenGameStarted = listen<{ instance_id: string; pid?: number }>("game-started", (event) => {
       setIsLaunching(false);
+      setIsGameRunning(true);
+      setRunningInstanceId(event.payload.instance_id);
       showToast("Gra Minecraft została uruchomiona!", "success");
+    });
+
+    const unlistenGameStopped = listen<{ instance_id: string; exit_code: number }>("game-stopped", (event) => {
+      setIsGameRunning(false);
+      setRunningInstanceId(null);
+      showToast(`Proces gry został zakończony (kod wyjścia ${event.payload.exit_code})`, "info");
     });
 
     return () => {
@@ -116,6 +138,7 @@ export default function App() {
       unlistenJavaProgress.then((f) => f());
       unlistenLogs.then((f) => f());
       unlistenGameStarted.then((f) => f());
+      unlistenGameStopped.then((f) => f());
     };
   }, []);
 
@@ -363,6 +386,18 @@ export default function App() {
     }
   };
 
+  const handleKillGame = async () => {
+    try {
+      const targetId = runningInstanceId || (activeInstance ? activeInstance.id : null);
+      await invoke("kill_game", { instanceId: targetId });
+      setIsGameRunning(false);
+      setRunningInstanceId(null);
+      showToast("Wysłano sygnał zatrzymania gry", "info");
+    } catch (err) {
+      showToast(`Błąd zatrzymywania: ${err}`, "error");
+    }
+  };
+
   return (
     <div className="flex h-screen w-screen bg-[#0D0D0D] text-white relative overflow-hidden font-sans">
       {/* Ambient background glows in vant.fun style */}
@@ -387,7 +422,7 @@ export default function App() {
       )}
 
       {/* Navigation Dock */}
-      <Dock activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Dock activeTab={activeTab} setActiveTab={setActiveTab} isGameRunning={isGameRunning} />
 
       {/* Main Content Area */}
       <main className="flex-1 h-full overflow-hidden flex flex-col relative z-10">
@@ -399,6 +434,8 @@ export default function App() {
             onUpdateNickname={handleUpdateNickname}
             onSelectInstance={handleSelectInstance}
             onLaunch={handleLaunch}
+            onKillGame={handleKillGame}
+            isGameRunning={isGameRunning}
             onOpenFolder={() => activeInstance && handleOpenFolder(activeInstance.id)}
             onGoToMods={() => setActiveTab("mods")}
             onGoToInstances={() => setActiveTab("instances")}
@@ -438,6 +475,16 @@ export default function App() {
             onInstallModFile={handleInstallModFile}
             onInstallModBytes={handleInstallModBytes}
             onOpenModsFolder={() => activeInstance && handleOpenFolder(activeInstance.id, "mods")}
+            onModInstalled={() => activeInstance && loadModsForInstance(activeInstance.id)}
+          />
+        )}
+
+        {activeTab === "console" && (
+          <ConsoleView
+            logs={logs}
+            onClearLogs={() => setLogs([])}
+            isGameRunning={isGameRunning}
+            onKillGame={handleKillGame}
           />
         )}
 

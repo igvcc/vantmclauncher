@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Plus, Layers, Play, FolderOpen, Trash2, Box, X } from "lucide-react";
+import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2 } from "lucide-react";
 import { Instance, VersionEntry } from "../types";
+import { safeInvoke } from "../api";
 
 interface InstancesViewProps {
   instances: Instance[];
@@ -38,18 +39,60 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [mcVersion, setMcVersion] = useState("1.20.4");
   const [loader, setLoader] = useState<"fabric" | "vanilla" | "forge" | "neoforge" | "quilt">("fabric");
   const [loaderVersion, setLoaderVersion] = useState("");
+  const [loaderVersionsList, setLoaderVersionsList] = useState<string[]>([]);
+  const [isLoadingLoaders, setIsLoadingLoaders] = useState(false);
 
   useEffect(() => {
-    if (loader === "fabric" && mcVersion) {
-      fetchFabricLoaders(mcVersion);
+    let active = true;
+    if (loader === "vanilla") {
+      setLoaderVersionsList([]);
+      setLoaderVersion("");
+      return;
     }
+
+    setIsLoadingLoaders(true);
+    const fetchVersions = async () => {
+      try {
+        let versions: string[] = [];
+        if (loader === "fabric") {
+          fetchFabricLoaders(mcVersion);
+          return;
+        } else if (loader === "quilt") {
+          versions = await safeInvoke<string[]>("get_quilt_loaders", { gameVersion: mcVersion });
+        } else if (loader === "neoforge") {
+          versions = await safeInvoke<string[]>("get_neoforge_versions", { gameVersion: mcVersion });
+        } else if (loader === "forge") {
+          versions = await safeInvoke<string[]>("get_forge_versions", { gameVersion: mcVersion });
+        }
+        if (active) {
+          setLoaderVersionsList(versions || []);
+          if (versions && versions.length > 0) {
+            setLoaderVersion(versions[0]);
+          } else {
+            setLoaderVersion("");
+          }
+        }
+      } catch (err) {
+        console.error("Błąd pobierania wersji loadera:", err);
+      } finally {
+        if (active) setIsLoadingLoaders(false);
+      }
+    };
+    fetchVersions();
+    return () => {
+      active = false;
+    };
   }, [loader, mcVersion]);
 
   useEffect(() => {
-    if (fabricLoaders.length > 0) {
-      setLoaderVersion(fabricLoaders[0]);
+    if (loader === "fabric") {
+      setLoaderVersionsList(fabricLoaders);
+      if (fabricLoaders.length > 0) {
+        setLoaderVersion(fabricLoaders[0]);
+      }
+      setIsLoadingLoaders(false);
     }
-  }, [fabricLoaders]);
+  }, [loader, fabricLoaders]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +101,7 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
       finalName,
       mcVersion,
       loader,
-      loader === "fabric" ? loaderVersion : undefined,
+      loader !== "vanilla" && loaderVersion ? loaderVersion : undefined,
       loader
     );
     setIsModalOpen(false);
@@ -259,22 +302,39 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                 </select>
               </div>
 
-              {loader === "fabric" && fabricLoaders.length > 0 && (
+              {loader !== "vanilla" && (
                 <div>
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">
-                    Wersja Fabric Loader
-                  </label>
-                  <select
-                    value={loaderVersion}
-                    onChange={(e) => setLoaderVersion(e.target.value)}
-                    className="w-full bg-black/70 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 cursor-pointer font-mono"
-                  >
-                    {fabricLoaders.slice(0, 15).map((ver) => (
-                      <option key={ver} value={ver} className="bg-[#111114]">
-                        {ver}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                      Wersja {loader.toUpperCase()}
+                    </label>
+                    {isLoadingLoaders && (
+                      <span className="flex items-center gap-1 text-[11px] text-neon-cyan">
+                        <Loader2 size={11} className="animate-spin" /> Pobieranie wersji...
+                      </span>
+                    )}
+                  </div>
+                  {loaderVersionsList.length > 0 ? (
+                    <select
+                      value={loaderVersion}
+                      onChange={(e) => setLoaderVersion(e.target.value)}
+                      className="w-full bg-black/70 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 cursor-pointer font-mono"
+                    >
+                      {loaderVersionsList.slice(0, 20).map((ver) => (
+                        <option key={ver} value={ver} className="bg-[#111114]">
+                          {ver}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={loaderVersion}
+                      onChange={(e) => setLoaderVersion(e.target.value)}
+                      placeholder={isLoadingLoaders ? "Ładowanie wersji z API..." : "np. najnowsza"}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                  )}
                 </div>
               )}
 

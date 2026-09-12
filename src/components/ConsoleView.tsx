@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { Terminal, Trash2, Copy, Check, Search } from "lucide-react";
+import { Terminal, Trash2, Copy, Check, Search, Square } from "lucide-react";
 import { LaunchLogPayload } from "../types";
 
 interface ConsoleViewProps {
   logs: LaunchLogPayload[];
   onClearLogs: () => void;
+  isGameRunning?: boolean;
+  onKillGame?: () => void;
 }
 
-export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs }) => {
+export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs, isGameRunning, onKillGame }) => {
   const [filter, setFilter] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -50,10 +52,10 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs }) =
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Terminal size={13} />
-            <span>Konsola Gry</span>
+            <span>Konsola Procesu</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
-            Logi Minecraft & JVM
+            Konsola Systemowa & Logi
           </h2>
           <p className="text-gray-400 text-xs mt-1">
             Podgląd na żywo komunikatów silnika gry, ładowanych modów i ewentualnych błędów.
@@ -61,6 +63,17 @@ export const ConsoleView: React.FC<ConsoleViewProps> = ({ logs, onClearLogs }) =
         </div>
 
         <div className="flex items-center gap-2">
+          {isGameRunning && (
+            <button
+              onClick={onKillGame}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-bold text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)] transition-all cursor-pointer"
+              title="Wymuś zakończenie procesu gry"
+            >
+              <Square size={13} fill="currentColor" />
+              <span>Zamknij Grę</span>
+            </button>
+          )}
+
           <button
             onClick={handleCopyLogs}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, FolderOpen, Puzzle, Copy, Check, Sparkles, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, FolderOpen, Puzzle, Copy, Check, Sparkles, AlertTriangle, Loader2, Square } from "lucide-react";
 import { Instance, UserSettings, DownloadProgress } from "../types";
 
 interface HomeViewProps {
@@ -9,12 +9,14 @@ interface HomeViewProps {
   onUpdateNickname: (nick: string) => void;
   onSelectInstance: (id: string) => void;
   onLaunch: () => void;
+  onKillGame?: () => void;
   onOpenFolder: () => void;
   onGoToMods: () => void;
   onGoToInstances: () => void;
   onGoToJava: () => void;
   downloadProgress: DownloadProgress | null;
   isLaunching: boolean;
+  isGameRunning?: boolean;
   offlineUuid: string;
   javaCount: number;
 }
@@ -26,12 +28,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onUpdateNickname,
   onSelectInstance,
   onLaunch,
+  onKillGame,
   onOpenFolder,
   onGoToMods,
   onGoToInstances,
   onGoToJava,
   downloadProgress,
   isLaunching,
+  isGameRunning,
   offlineUuid,
   javaCount,
 }) => {
@@ -69,13 +73,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-1.5">
               <Sparkles size={13} />
-              <span>VΛNT Minecraft Edition</span>
+              <span>VΛNT CLIENT</span>
             </div>
             <h1 className="text-3xl font-heading font-extrabold text-white tracking-tight leading-none">
-              VΛNT <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-blue-400 to-purple-500 drop-shadow-[0_0_20px_rgba(0,242,255,0.3)]">LAUNCHER</span>
+              VΛNT <span className="text-transparent bg-clip-text bg-gradient-to-r from-neon-cyan via-blue-400 to-purple-500 drop-shadow-[0_0_20px_rgba(0,242,255,0.3)]">DESKTOP</span>
             </h1>
             <p className="text-gray-400 text-xs tracking-wide mt-1">
-              Wejdź i napisz swoją historię — szybki, lekki i bezpieczny launcher Minecraft.
+              Szybki, lekki i nowoczesny klient gry zoptymalizowany pod procesory Apple Silicon.
             </p>
           </div>
         </div>
@@ -264,30 +268,47 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onLaunch}
-            disabled={isLaunching || !activeInstance}
-            className={`flex items-center justify-center gap-3 px-10 py-4 rounded-2xl font-heading font-extrabold text-sm tracking-widest uppercase transition-all duration-300 cursor-pointer ${
-              isLaunching
-                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 cursor-wait shadow-neon-cyan"
-                : !activeInstance
-                ? "opacity-50 bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed"
-                : "btn-neon"
-            }`}
-          >
-            {isLaunching ? (
-              <Loader2 size={18} className="animate-spin text-neon-cyan" />
-            ) : (
-              <Play size={18} fill={isLaunching ? "none" : "currentColor"} />
-            )}
-            <span>
-              {isLaunching
-                ? "URUCHAMIANIE..."
-                : !activeInstance
-                ? "WYBIERZ INSTANCJĘ"
-                : "ZAGRAJ W MINECRAFT"}
-            </span>
-          </button>
+          {isGameRunning ? (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-semibold text-xs tracking-wider">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                <span>GRA DZIAŁA W TLE</span>
+              </div>
+              <button
+                onClick={onKillGame}
+                className="flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-2xl font-heading font-extrabold text-xs tracking-widest uppercase transition-all duration-300 cursor-pointer bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 hover:border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.35)]"
+                title="Wymuś natychmiastowe zakończenie procesu gry"
+              >
+                <Square size={16} fill="currentColor" />
+                <span>ZAMKNIJ GRĘ</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onLaunch}
+              disabled={isLaunching || !activeInstance}
+              className={`flex items-center justify-center gap-3 px-10 py-4 rounded-2xl font-heading font-extrabold text-sm tracking-widest uppercase transition-all duration-300 cursor-pointer ${
+                isLaunching
+                  ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 cursor-wait shadow-neon-cyan"
+                  : !activeInstance
+                  ? "opacity-50 bg-white/5 border border-white/10 text-gray-400 cursor-not-allowed"
+                  : "btn-neon"
+              }`}
+            >
+              {isLaunching ? (
+                <Loader2 size={18} className="animate-spin text-neon-cyan" />
+              ) : (
+                <Play size={18} fill={isLaunching ? "none" : "currentColor"} />
+              )}
+              <span>
+                {isLaunching
+                  ? "URUCHAMIANIE..."
+                  : !activeInstance
+                  ? "WYBIERZ INSTANCJĘ"
+                  : "GRAJ"}
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

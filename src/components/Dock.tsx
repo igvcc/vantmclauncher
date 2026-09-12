@@ -5,9 +5,10 @@ export type TabType = "home" | "instances" | "mods" | "java" | "console" | "sett
 interface DockProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  isGameRunning?: boolean;
 }
 
-export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab }) => {
+export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab, isGameRunning }) => {
   const navItems = [
     { id: "home" as TabType, label: "START", icon: Home },
     { id: "instances" as TabType, label: "INSTANCJE", icon: Layers },
@@ -28,14 +29,20 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab }) => {
               alt="Vant Logo"
               className="w-full h-full object-contain filter drop-shadow-[0_0_10px_rgba(0,242,255,0.6)]"
             />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-neon-cyan shadow-neon-cyan animate-pulse" />
+            <span
+              className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${
+                isGameRunning
+                  ? "bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] animate-ping"
+                  : "bg-neon-cyan shadow-neon-cyan animate-pulse"
+              }`}
+            />
           </div>
           <div>
             <h1 className="font-heading font-extrabold text-lg tracking-widest text-white leading-none">
-              VΛNT <span className="text-neon-cyan text-sm font-semibold tracking-wider">MC</span>
+              VΛNT <span className="text-neon-cyan text-xs font-bold tracking-wider">CLIENT</span>
             </h1>
             <p className="text-[10px] text-gray-400 tracking-wider uppercase font-medium mt-1">
-              Minecraft Launcher
+              {isGameRunning ? "Sesja w toku" : "System gotowy"}
             </p>
           </div>
         </div>
@@ -79,6 +86,15 @@ export const Dock: React.FC<DockProps> = ({ activeTab, setActiveTab }) => {
             Non-Premium
           </span>
         </div>
+        {isGameRunning && (
+          <div className="flex items-center justify-between pt-1 border-t border-white/5">
+            <span className="text-gray-400">Proces</span>
+            <span className="text-emerald-400 font-bold flex items-center gap-1 text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              AKTYWNY
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   );

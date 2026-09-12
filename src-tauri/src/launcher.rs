@@ -8,11 +8,18 @@ use crate::java::{download_temurin_java, find_java_binary, scan_java_installatio
 use crate::models::{DownloadProgress, LaunchLogPayload};
 use crate::paths::{get_assets_dir, get_instance_dir, get_libraries_dir, get_runtimes_dir};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tauri::{AppHandle, Emitter};
+use std::sync::{Arc, Mutex};
+use tauri::{AppHandle, Emitter, Manager};
+
+#[derive(Default, Clone)]
+pub struct GameProcessState {
+    pub running_processes: Arc<Mutex<HashMap<String, u32>>>,
+}
 
 pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Result<(), String> {
     let settings = load_settings();
@@ -194,6 +201,14 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     #[cfg(target_os = "macos")]
     {
         jvm_args.push("-XstartOnFirstThread".to_string());
+
+        if std::env::consts::ARCH == "aarch64" && !settings.jvm_args.contains("UseZGC") && !settings.jvm_args.contains("UseParallelGC") {
+            // Apple Silicon unified memory & low-latency Generational ZGC for Java 21
+            jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
+            jvm_args.push("-XX:+UseZGC".to_string());
+            jvm_args.push("-XX:+ZGenerational".to_string());
+            jvm_args.push("-XX:+UseStringDeduplication".to_string());
+        }
     }
 
     jvm_args.push("-cp".to_string());
@@ -264,6 +279,14 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         }
     };
 
+    let pid = child.id();
+    if let Some(state) = app_handle.try_state::<GameProcessState>() {
+        let mut map = state.running_processes.lock().unwrap();
+        map.insert(instance_id.to_string(), pid);
+    }
+
+    emit_log(format!("[VantLauncher] Zarejestrowano PID procesu gry: {}", pid), false);
+
     let stdout = child.stdout.take().ok_or("Nie można przechwycić stdout")?;
     let stderr = child.stderr.take().ok_or("Nie można przechwycić stderr")?;
 
@@ -304,6 +327,10 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     std::thread::spawn(move || {
         match child.wait() {
             Ok(status) => {
+                if let Some(state) = app_h3.try_state::<GameProcessState>() {
+                    let mut map = state.running_processes.lock().unwrap();
+                    map.remove(&inst_id_3);
+                }
                 let code = status.code().unwrap_or(-1);
                 let is_error = !status.success();
                 let exit_msg = if status.success() {
@@ -329,6 +356,10 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
                 );
             }
             Err(e) => {
+                if let Some(state) = app_h3.try_state::<GameProcessState>() {
+                    let mut map = state.running_processes.lock().unwrap();
+                    map.remove(&inst_id_3);
+                }
                 let _ = app_h3.emit(
                     "minecraft-log",
                     LaunchLogPayload {
@@ -341,8 +372,78 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         }
     });
 
-    let _ = app_handle.emit("game-started", serde_json::json!({ "instance_id": instance_id }));
+    let _ = app_handle.emit("game-started", serde_json::json!({ "instance_id": instance_id, "pid": pid }));
     Ok(())
+}
+
+pub fn kill_game_process(app_handle: &AppHandle, instance_id: Option<String>) -> Result<(), String> {
+    let state = app_handle
+        .try_state::<GameProcessState>()
+        .ok_or_else(|| "Brak stanu procesów".to_string())?;
+
+    let mut map = state.running_processes.lock().unwrap();
+    let targets: Vec<(String, u32)> = if let Some(ref id) = instance_id {
+        if let Some(&pid) = map.get(id) {
+            vec![(id.clone(), pid)]
+        } else {
+            vec![]
+        }
+    } else {
+        map.iter().map(|(k, &v)| (k.clone(), v)).collect()
+    };
+
+    if targets.is_empty() {
+        return Ok(());
+    }
+
+    for (inst_id, pid) in targets {
+        map.remove(&inst_id);
+
+        #[cfg(unix)]
+        {
+            let _ = std::process::Command::new("kill").args(["-9", &pid.to_string()]).output();
+        }
+        #[cfg(windows)]
+        {
+            let _ = std::process::Command::new("taskkill").args(["/F", "/T", "/PID", &pid.to_string()]).output();
+        }
+
+        let _ = app_handle.emit("game-stopped", serde_json::json!({
+            "instance_id": inst_id,
+            "exit_code": -9,
+            "killed": true
+        }));
+
+        let _ = app_handle.emit("minecraft-log", LaunchLogPayload {
+            instance_id: inst_id,
+            line: format!("[VantLauncher] Zatrzymano proces gry na żądanie użytkownika (PID: {})", pid),
+            is_error: false,
+        });
+    }
+
+    Ok(())
+}
+
+pub fn is_game_running(app_handle: &AppHandle, instance_id: Option<String>) -> bool {
+    if let Some(state) = app_handle.try_state::<GameProcessState>() {
+        let map = state.running_processes.lock().unwrap();
+        if let Some(id) = instance_id {
+            map.contains_key(&id)
+        } else {
+            !map.is_empty()
+        }
+    } else {
+        false
+    }
+}
+
+pub fn get_running_instance_id(app_handle: &AppHandle) -> Option<String> {
+    if let Some(state) = app_handle.try_state::<GameProcessState>() {
+        let map = state.running_processes.lock().unwrap();
+        map.keys().next().cloned()
+    } else {
+        None
+    }
 }
 
 async fn resolve_java_path(

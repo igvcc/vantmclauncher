@@ -4,12 +4,16 @@ mod downloader;
 mod instances;
 mod java;
 mod launcher;
+mod loaders_api;
 mod models;
+mod modrinth;
 mod mojang;
 mod mods;
 mod paths;
 
+use launcher::GameProcessState;
 use models::{Instance, JavaInstallation, ModItem, UserSettings, VersionEntry};
+use modrinth::{ModrinthSearchResult, ModrinthVersion};
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -84,6 +88,57 @@ async fn get_fabric_loaders(game_version: String) -> Result<Vec<String>, String>
 }
 
 #[tauri::command]
+async fn get_quilt_loaders(game_version: String) -> Result<Vec<String>, String> {
+    loaders_api::get_quilt_loaders(&game_version).await
+}
+
+#[tauri::command]
+async fn get_neoforge_versions(game_version: String) -> Result<Vec<String>, String> {
+    loaders_api::get_neoforge_versions(&game_version).await
+}
+
+#[tauri::command]
+async fn get_forge_versions(game_version: String) -> Result<Vec<String>, String> {
+    loaders_api::get_forge_versions(&game_version).await
+}
+
+#[tauri::command]
+async fn search_modrinth_mods(
+    query: String,
+    loader: Option<String>,
+    mc_version: Option<String>,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<ModrinthSearchResult, String> {
+    modrinth::search_mods(
+        &query,
+        loader.as_deref(),
+        mc_version.as_deref(),
+        limit.unwrap_or(20),
+        offset.unwrap_or(0),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn get_modrinth_versions(
+    project_id: String,
+    loader: Option<String>,
+    mc_version: Option<String>,
+) -> Result<Vec<ModrinthVersion>, String> {
+    modrinth::get_project_versions(&project_id, loader.as_deref(), mc_version.as_deref()).await
+}
+
+#[tauri::command]
+async fn install_modrinth_mod(
+    instance_id: String,
+    file_url: String,
+    filename: String,
+) -> Result<ModItem, String> {
+    modrinth::install_mod_version(&instance_id, &file_url, &filename).await
+}
+
+#[tauri::command]
 fn get_java_installations() -> Vec<JavaInstallation> {
     java::scan_java_installations()
 }
@@ -99,6 +154,21 @@ async fn launch_game(instance_id: String, app_handle: AppHandle) -> Result<(), S
 }
 
 #[tauri::command]
+fn kill_game(app_handle: AppHandle, instance_id: Option<String>) -> Result<(), String> {
+    launcher::kill_game_process(&app_handle, instance_id)
+}
+
+#[tauri::command]
+fn is_game_running(app_handle: AppHandle, instance_id: Option<String>) -> bool {
+    launcher::is_game_running(&app_handle, instance_id)
+}
+
+#[tauri::command]
+fn get_running_instance_id(app_handle: AppHandle) -> Option<String> {
+    launcher::get_running_instance_id(&app_handle)
+}
+
+#[tauri::command]
 fn get_offline_uuid_cmd(nickname: String) -> String {
     auth::get_offline_uuid(&nickname)
 }
@@ -106,6 +176,7 @@ fn get_offline_uuid_cmd(nickname: String) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(GameProcessState::default())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -121,9 +192,18 @@ pub fn run() {
             install_mod_bytes,
             get_mc_versions,
             get_fabric_loaders,
+            get_quilt_loaders,
+            get_neoforge_versions,
+            get_forge_versions,
+            search_modrinth_mods,
+            get_modrinth_versions,
+            install_modrinth_mod,
             get_java_installations,
             download_java,
             launch_game,
+            kill_game,
+            is_game_running,
+            get_running_instance_id,
             get_offline_uuid_cmd
         ])
         .run(tauri::generate_context!())

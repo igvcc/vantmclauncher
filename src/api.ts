@@ -157,6 +157,81 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
       return MOCK_VERSIONS as unknown as T;
     case "get_fabric_loaders":
       return ["0.15.11", "0.15.10", "0.15.7", "0.14.25"] as unknown as T;
+    case "get_quilt_loaders":
+      return ["0.20.0-beta.9", "0.20.0-beta.8"] as unknown as T;
+    case "get_neoforge_versions":
+      return ["20.4.237", "20.4.236", "20.4.235"] as unknown as T;
+    case "get_forge_versions":
+      return ["49.0.30 (zalecana)", "49.0.38 (najnowsza)"] as unknown as T;
+    case "search_modrinth_mods":
+      return {
+        hits: [
+          {
+            project_id: "AANobbMI",
+            slug: "sodium",
+            title: "Sodium",
+            description: "Nowoczesny silnik renderujący, który dramatycznie podnosi liczbę FPS i eliminuje stuttering.",
+            icon_url: "https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp",
+            downloads: 223800000,
+            categories: ["fabric", "neoforge", "optimization"],
+            author: "jellysquid3",
+          },
+          {
+            project_id: "gvQqBUqZ",
+            slug: "lithium",
+            title: "Lithium",
+            description: "Optymalizacja silnika fizyki, sztucznej inteligencji mobów i tickowania chunków.",
+            icon_url: "https://cdn.modrinth.com/data/gvQqBUqZ/icon.png",
+            downloads: 154000000,
+            categories: ["fabric", "quilt", "optimization"],
+            author: "jellysquid3",
+          },
+          {
+            project_id: "YL57xq9U",
+            slug: "iris",
+            title: "Iris Shaders",
+            description: "Szybki loader shaderów z pełnym wsparciem dla pakietów BSL, Complementary i innych.",
+            icon_url: "https://cdn.modrinth.com/data/YL57xq9U/icon.png",
+            downloads: 98000000,
+            categories: ["fabric", "shaders"],
+            author: "coderbot",
+          },
+          {
+            project_id: "uXXizFIs",
+            slug: "ferrite-core",
+            title: "FerriteCore",
+            description: "Drastyczne zmniejszenie zużycia pamięci RAM przez Minecrafta (nawet o 40%).",
+            icon_url: "https://cdn.modrinth.com/data/uXXizFIs/icon.png",
+            downloads: 72000000,
+            categories: ["fabric", "forge", "optimization"],
+            author: "malte0811",
+          }
+        ],
+        offset: 0,
+        limit: 20,
+        total_hits: 4,
+      } as unknown as T;
+    case "get_modrinth_versions":
+      return [
+        {
+          id: "ver-1",
+          project_id: args?.projectId,
+          name: "Wersja 1.0.0",
+          version_number: "1.0.0",
+          game_versions: ["1.20.4"],
+          loaders: ["fabric"],
+          files: [{ url: "https://example.com/mod.jar", filename: "mod.jar", primary: true, size: 1024000 }],
+        }
+      ] as unknown as T;
+    case "install_modrinth_mod":
+      return {
+        filename: args?.filename || "downloaded-mod.jar",
+        name: args?.filename?.replace(".jar", "") || "Nowy Mod",
+        version: "1.0.0",
+        description: "Pobrano z Modrinth",
+        authors: ["Modrinth"],
+        enabled: true,
+      } as unknown as T;
     case "get_java_installations":
       return MOCK_JAVA as unknown as T;
     case "download_java":
@@ -165,6 +240,12 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
       return "00000000-0000-3000-8000-000000000000" as unknown as T;
     case "launch_game":
       return undefined as unknown as T;
+    case "kill_game":
+      return undefined as unknown as T;
+    case "is_game_running":
+      return false as unknown as T;
+    case "get_running_instance_id":
+      return null as unknown as T;
     default:
       return undefined as unknown as T;
   }

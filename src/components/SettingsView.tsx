@@ -37,6 +37,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const applyAppleSiliconPreset = () => {
+    setJvmArgs("-XX:+UnlockExperimentalVMOptions -XX:+UseZGC -XX:+ZGenerational -XX:+UseStringDeduplication -Dsun.rmi.dgc.server.gcInterval=2147483646");
+  };
+
   const applyG1GCPreset = () => {
     setJvmArgs("-XX:+UseG1GC -Dsun.rmi.dgc.server.gcInterval=2147483646 -XX:+UnlockExperimentalVMOptions -XX:G1NewSizePercent=20 -XX:G1ReservePercent=20 -XX:MaxGCPauseMillis=50 -XX:G1HeapRegionSize=32M");
   };
@@ -52,7 +56,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-neon-cyan text-xs font-semibold tracking-wider uppercase mb-2">
             <Sliders size={13} />
-            <span>Konfiguracja Launchera</span>
+            <span>Konfiguracja Klienta</span>
           </div>
           <h2 className="text-3xl font-heading font-extrabold text-white tracking-tight">
             Ustawienia Główne
@@ -67,7 +71,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white transition-colors cursor-pointer"
         >
           <FolderOpen size={15} className="text-neon-cyan" />
-          <span>Folder główny launchera</span>
+          <span>Folder aplikacji</span>
         </button>
       </div>
 
@@ -99,18 +103,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 Więcej RAM-u jest zalecane w przypadku rozbudowanych paczek modów (Fabric / Forge).
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold px-3 py-1 rounded-lg bg-cyan-400/10 border border-cyan-400/30 text-neon-cyan">
-                {maxRam} MB ({Math.round((maxRam / 1024) * 10) / 10} GB)
-              </span>
-            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <div>
               <div className="flex justify-between text-xs text-gray-400 mb-2">
                 <span>Maksymalna pamięć (-Xmx):</span>
-                <span className="font-mono text-white">{maxRam} MB</span>
+                <span className="font-mono text-neon-cyan font-bold">{maxRam} MB ({(maxRam / 1024).toFixed(1)} GB)</span>
               </div>
               <input
                 type="range"
@@ -157,15 +156,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={applyG1GCPreset}
-                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-neon-cyan border border-cyan-500/20 transition-colors cursor-pointer"
+                onClick={applyAppleSiliconPreset}
+                className="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-[11px] text-neon-cyan border border-cyan-400/30 transition-colors cursor-pointer font-semibold shadow-[0_0_10px_rgba(0,242,255,0.2)]"
               >
-                Preset G1GC (Wydajność)
+                ⚡ Apple Silicon (ZGC)
+              </button>
+              <button
+                type="button"
+                onClick={applyG1GCPreset}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-gray-300 border border-white/10 transition-colors cursor-pointer"
+              >
+                G1GC
               </button>
               <button
                 type="button"
                 onClick={applySimplePreset}
-                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-gray-300 border border-white/10 transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] text-gray-400 border border-white/10 transition-colors cursor-pointer"
               >
                 Czysty
               </button>
