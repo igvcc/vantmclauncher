@@ -1,6 +1,10 @@
 # VantMcLauncher 🚀
 
+[![Release & Multi-Platform Build](https://github.com/igvcc/vantmclauncher/actions/workflows/release.yml/badge.svg)](https://github.com/igvcc/vantmclauncher/actions/workflows/release.yml)
+[![CI: Lint, Build & Test](https://github.com/igvcc/vantmclauncher/actions/workflows/ci.yml/badge.svg)](https://github.com/igvcc/vantmclauncher/actions/workflows/ci.yml)
+
 Nowoczesny, szybki i lekki launcher Minecrafta napisany w **Rust (Tauri 2)** z interfejsem **React + Tailwind CSS + Lucide Icons**, zaprojektowany w stylistyce serwisu **`vant.fun`** (głęboki dark mode `#0D0D0D`, neon cyan `#00F2FF`, pływający dock nawigacyjny, szklane panele i rozmycia).
+Każde wydanie jest **automatycznie kompilowane przez GitHub Actions** na platformy **macOS** (Apple Silicon + Intel), **Windows 10/11** (.msi / .exe) oraz **Linux** (.deb / .AppImage).
 
 ---
 
