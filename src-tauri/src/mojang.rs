@@ -100,8 +100,8 @@ pub async fn get_fabric_loaders(game_version: &str) -> Result<Vec<String>, Strin
         }
     }
 
-    // Domyślna wersja fabric loadera
-    Ok(vec!["0.15.11".to_string(), "0.15.7".to_string(), "0.14.25".to_string()])
+    // Jeśli Fabric API nie wspiera danej wersji gry, zwróć pustą listę
+    Ok(vec![])
 }
 
 pub fn parse_manifest_bytes(bytes: &[u8]) -> Option<Vec<VersionEntry>> {

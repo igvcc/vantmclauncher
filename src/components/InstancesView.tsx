@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2, Search } from "lucide-react";
+import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2, Search, AlertTriangle } from "lucide-react";
 import { Instance, VersionEntry } from "../types";
 import { safeInvoke } from "../api";
 
@@ -55,6 +55,18 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
       }
     }
   }, [availableVersions]);
+
+  useEffect(() => {
+    const isOldLegacy =
+      mcVersion.startsWith("rd-") ||
+      mcVersion.startsWith("c0.") ||
+      mcVersion.startsWith("inf-") ||
+      mcVersion.startsWith("a1.") ||
+      mcVersion.startsWith("b1.");
+    if (isOldLegacy && loader !== "vanilla") {
+      setLoader("vanilla");
+    }
+  }, [mcVersion]);
 
   useEffect(() => {
     let active = true;
@@ -143,13 +155,15 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalName = name.trim() || `${loader.toUpperCase()} ${mcVersion}`;
+    const isLoaderUnavailable = loader !== "vanilla" && loaderVersionsList.length === 0;
+    const effectiveLoader = isLoaderUnavailable ? "vanilla" : loader;
+    const finalName = name.trim() || `${effectiveLoader.toUpperCase()} ${mcVersion}`;
     onCreateInstance(
       finalName,
       mcVersion,
-      loader,
-      loader !== "vanilla" && loaderVersion ? loaderVersion : undefined,
-      loader
+      effectiveLoader,
+      effectiveLoader !== "vanilla" && loaderVersion ? loaderVersion : undefined,
+      effectiveLoader === "vanilla" ? "grass" : effectiveLoader
     );
     setIsModalOpen(false);
     setName("");
@@ -436,14 +450,26 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                         </option>
                       ))}
                     </select>
+                  ) : isLoadingLoaders ? (
+                    <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-gray-400">
+                      <Loader2 size={13} className="animate-spin text-neon-cyan" />
+                      <span>Sprawdzanie dostępności silnika {loader.toUpperCase()} dla wersji {mcVersion}...</span>
+                    </div>
                   ) : (
-                    <input
-                      type="text"
-                      value={loaderVersion}
-                      onChange={(e) => setLoaderVersion(e.target.value)}
-                      placeholder={isLoadingLoaders ? "Sprawdzanie wersji z API..." : "np. najnowsza zalecana"}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 font-mono"
-                    />
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5 text-xs text-amber-300">
+                      <AlertTriangle size={15} className="shrink-0 mt-0.5 text-amber-400" />
+                      <div>
+                        <p className="font-semibold text-white mb-0.5">Silnik {loader.toUpperCase()} jest niedostępny dla Minecraft {mcVersion}</p>
+                        <p className="text-gray-400 text-[11px] mb-2">Ta wersja gry wspiera wyłącznie oficjalny profil Vanilla.</p>
+                        <button
+                          type="button"
+                          onClick={() => setLoader("vanilla")}
+                          className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-lg text-[11px] font-medium transition-colors cursor-pointer"
+                        >
+                          Przełącz na profil Vanilla
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

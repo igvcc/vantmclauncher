@@ -42,6 +42,12 @@ pub fn scan_java_installations() -> Vec<JavaInstallation> {
             }
         }
 
+        // macOS JavaAppletPlugin (bardzo częsta lokalizacja oficjalnej Javy 8 od Oracle)
+        let applet_plugin = PathBuf::from("/Library/Internet Plug-Ins/JavaAppletPlugin.plugin/Contents/Home/bin/java");
+        if applet_plugin.exists() {
+            scanned_paths.push(applet_plugin);
+        }
+
         // Homebrew OpenJDK
         for dir_name in &["openjdk", "openjdk@21", "openjdk@17", "openjdk@11", "openjdk@8"] {
             let brew_bin = PathBuf::from(format!("/opt/homebrew/opt/{}/bin/java", dir_name));
@@ -51,6 +57,19 @@ pub fn scan_java_installations() -> Vec<JavaInstallation> {
             let brew_libexec = PathBuf::from(format!("/opt/homebrew/opt/{}/libexec/openjdk.jdk/Contents/Home/bin/java", dir_name));
             if brew_libexec.exists() {
                 scanned_paths.push(brew_libexec);
+            }
+        }
+
+        // Sprawdź /usr/libexec/java_home
+        if let Ok(output) = Command::new("/usr/libexec/java_home").output() {
+            if output.status.success() {
+                let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path_str.is_empty() {
+                    let jvm_bin = PathBuf::from(&path_str).join("bin").join("java");
+                    if jvm_bin.exists() {
+                        scanned_paths.push(jvm_bin);
+                    }
+                }
             }
         }
 
@@ -209,11 +228,15 @@ pub async fn download_temurin_java(
         other => other,
     };
 
-    let arch = match std::env::consts::ARCH {
+    let mut arch = match std::env::consts::ARCH {
         "aarch64" => "aarch64",
         "x86_64" => "x64",
         other => other,
     };
+
+    if os == "mac" && arch == "aarch64" && version <= 8 {
+        arch = "x64";
+    }
 
     let download_url = format!(
         "https://api.adoptium.net/v3/binary/latest/{}/ga/{}/{}/jdk/hotspot/normal/eclipse",

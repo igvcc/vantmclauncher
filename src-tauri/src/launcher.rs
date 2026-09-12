@@ -29,11 +29,11 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         .find(|i| i.id == instance_id)
         .ok_or_else(|| format!("Nie znaleziono instancji {}", instance_id))?;
 
-    // 1. Ustal ścieżkę do Javy
-    let java_bin = resolve_java_path(&settings, &instance.mc_version, &app_handle).await?;
-
-    // 2. Pobierz/przygotuj pliki Vanilla
+    // 1. Pobierz/przygotuj pliki Vanilla oraz JSON wersji
     let (client_jar, vanilla_json) = prepare_vanilla_files(&instance.mc_version, &app_handle).await?;
+
+    // 2. Ustal ścieżkę do Javy dopasowaną do wymagań wersji gry
+    let java_bin = resolve_java_path(&settings, &vanilla_json, &instance.mc_version, &app_handle).await?;
 
     let instance_dir = get_instance_dir(instance_id);
     let natives_dir = instance_dir.join("natives");
@@ -566,7 +566,8 @@ pub fn get_running_instance_id(app_handle: &AppHandle) -> Option<String> {
 
 async fn resolve_java_path(
     settings: &crate::models::UserSettings,
-    _mc_version: &str,
+    vanilla_json: &Value,
+    mc_version: &str,
     app_handle: &AppHandle,
 ) -> Result<String, String> {
     if let Some(ref path) = settings.custom_java_path {
@@ -575,68 +576,86 @@ async fn resolve_java_path(
         }
     }
 
-    let runtimes_dir = get_runtimes_dir();
+    let required_major: u32 = vanilla_json
+        .pointer("/javaVersion/majorVersion")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+        .unwrap_or_else(|| {
+            if mc_version.starts_with("1.17")
+                || mc_version.starts_with("1.18")
+                || mc_version.starts_with("1.19")
+                || (mc_version.starts_with("1.20.") && !mc_version.starts_with("1.20.5") && !mc_version.starts_with("1.20.6"))
+            {
+                17
+            } else if mc_version.starts_with("1.20.5")
+                || mc_version.starts_with("1.20.6")
+                || mc_version.starts_with("1.21")
+                || mc_version.starts_with("26.")
+                || mc_version.starts_with("25w")
+                || mc_version.starts_with("26w")
+            {
+                21
+            } else {
+                8
+            }
+        });
 
-    // Priorytetowe wykrycie i użycie Javy 21 w runtimes launchera
-    // (np. runtimes/java-21/jdk-21.0.12.1+1/Contents/Home/bin/java)
-    let java21_dir = runtimes_dir.join("java-21");
-    if java21_dir.exists() {
-        if let Some(java_exec) = find_java_binary(&java21_dir) {
+    let runtimes_dir = get_runtimes_dir();
+    let is_sys_arm64 = std::env::consts::ARCH == "aarch64";
+
+    // 1. Sprawdź runtimes launchera pod kątem dokładnej wersji (np. runtimes/java-8, runtimes/java-17, runtimes/java-21)
+    let specific_dir = runtimes_dir.join(format!("java-{}", required_major));
+    if specific_dir.exists() {
+        if let Some(java_exec) = find_java_binary(&specific_dir) {
             return Ok(java_exec.to_string_lossy().to_string());
         }
     }
 
     let installed = scan_java_installations();
 
-    // Preferuj runtime Javy 21 z runtimes_dir
-    if let Some(runtime_j21) = installed.iter().find(|j| {
-        j.major_version == 21 && Path::new(&j.path).starts_with(&runtimes_dir)
-    }) {
-        return Ok(runtime_j21.path.clone());
-    }
-
-    // Preferuj jakąkolwiek Javę z runtimes >= 17 (na Apple Silicon preferuj ARM64)
-    let is_sys_arm64 = std::env::consts::ARCH == "aarch64";
-    if is_sys_arm64 {
-        if let Some(runtime_arm) = installed.iter().find(|j| {
-            j.is_arm64 && j.major_version >= 17 && Path::new(&j.path).starts_with(&runtimes_dir)
-        }) {
-            return Ok(runtime_arm.path.clone());
+    // 2. Wyszukaj najlepiej pasującą Javę
+    if required_major <= 8 {
+        // Wersje <= 1.16.5 (w tym rd, alpha, beta, 1.2.5, 1.7.10, 1.12.2) MUSZĄ działać na Javie 8
+        if let Some(j8) = installed.iter().find(|j| j.major_version == 8) {
+            return Ok(j8.path.clone());
+        }
+    } else if required_major == 17 {
+        if is_sys_arm64 {
+            if let Some(arm17) = installed.iter().find(|j| j.major_version == 17 && j.is_arm64) {
+                return Ok(arm17.path.clone());
+            }
+        }
+        if let Some(j17) = installed.iter().find(|j| j.major_version == 17) {
+            return Ok(j17.path.clone());
+        }
+        if is_sys_arm64 {
+            if let Some(arm21) = installed.iter().find(|j| j.major_version == 21 && j.is_arm64) {
+                return Ok(arm21.path.clone());
+            }
+        }
+        if let Some(j21) = installed.iter().find(|j| j.major_version == 21) {
+            return Ok(j21.path.clone());
+        }
+    } else {
+        // Nowe wersje (1.20.5+, 1.21+, 26.x)
+        if is_sys_arm64 {
+            if let Some(arm_high) = installed.iter().find(|j| j.major_version >= 21 && j.is_arm64) {
+                return Ok(arm_high.path.clone());
+            }
+        }
+        if let Some(high) = installed.iter().find(|j| j.major_version >= 21) {
+            return Ok(high.path.clone());
+        }
+        // Sprawdź ogólny java-21 w runtimes
+        let java21_dir = runtimes_dir.join("java-21");
+        if java21_dir.exists() {
+            if let Some(java_exec) = find_java_binary(&java21_dir) {
+                return Ok(java_exec.to_string_lossy().to_string());
+            }
         }
     }
 
-    if let Some(runtime_any) = installed.iter().find(|j| {
-        j.major_version >= 17 && Path::new(&j.path).starts_with(&runtimes_dir)
-    }) {
-        return Ok(runtime_any.path.clone());
-    }
-
-    // Następnie dowolna wykryta Java 21 (na ARM64 preferuj ARM64)
-    if is_sys_arm64 {
-        if let Some(sys_arm21) = installed.iter().find(|j| j.is_arm64 && j.major_version == 21) {
-            return Ok(sys_arm21.path.clone());
-        }
-    }
-
-    if let Some(j21) = installed.iter().find(|j| j.major_version == 21) {
-        return Ok(j21.path.clone());
-    }
-
-    // Dowolna Java >= 17
-    if is_sys_arm64 {
-        if let Some(sys_arm) = installed.iter().find(|j| j.is_arm64 && j.major_version >= 17) {
-            return Ok(sys_arm.path.clone());
-        }
-    }
-
-    if let Some(best) = installed.iter().find(|j| j.major_version >= 17) {
-        return Ok(best.path.clone());
-    }
-
-    if let Some(any) = installed.first() {
-        return Ok(any.path.clone());
-    }
-
+    // 3. Jeśli nie znaleziono pasującej wersji, pobierz ją automatycznie
     let _ = app_handle.emit(
         "download-progress",
         DownloadProgress {
@@ -644,11 +663,11 @@ async fn resolve_java_path(
             current: 0,
             total: 100,
             percentage: 5.0,
-            message: "Nie wykryto Javy na komputerze. Pobieranie OpenJDK 21...".to_string(),
+            message: format!("Pobieranie wymaganej Java {} dla Minecraft {}...", required_major, mc_version),
         },
     );
 
-    let downloaded_path = download_temurin_java(21, app_handle.clone()).await?;
+    let downloaded_path = download_temurin_java(required_major, app_handle.clone()).await?;
     Ok(downloaded_path)
 }
 

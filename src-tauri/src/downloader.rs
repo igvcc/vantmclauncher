@@ -346,45 +346,44 @@ pub fn is_library_allowed(lib: &Value, current_os: &str) -> bool {
 }
 
 pub fn is_native_for_wrong_arch(name_or_path: &str, current_os: &str, is_arm64: bool) -> bool {
+    let lower = name_or_path.to_lowercase();
     if current_os == "osx" {
-        let is_macos_native = name_or_path.contains("natives-macos")
-            || name_or_path.contains("natives-osx")
-            || name_or_path.contains("natives-darwin");
+        let is_macos_native = lower.contains("natives-macos")
+            || lower.contains("natives-osx")
+            || lower.contains("natives-darwin");
 
         if is_macos_native {
-            let is_arm_native = name_or_path.contains("arm64") || name_or_path.contains("aarch64");
-            if is_arm64 && !is_arm_native {
-                // Na macOS Apple Silicon ignoruj x86_64
+            let is_arm = lower.contains("arm64") || lower.contains("aarch64");
+            let is_explicit_x86 = lower.contains("x86_64") || lower.contains("-x64");
+
+            if is_arm64 && is_explicit_x86 {
                 return true;
             }
-            if !is_arm64 && is_arm_native {
-                // Na macOS Intel x86_64 ignoruj arm64
+            if !is_arm64 && is_arm {
                 return true;
             }
         }
     } else if current_os == "windows" {
-        let is_win_native = name_or_path.contains("natives-windows");
+        let is_win_native = lower.contains("natives-windows");
         if is_win_native {
-            let is_arm_native = name_or_path.contains("arm64") || name_or_path.contains("aarch64");
-            let is_x86_32 = name_or_path.contains("x86") && !name_or_path.contains("x86_64");
+            let is_arm = lower.contains("arm64") || lower.contains("aarch64");
+            let is_x86_32 = lower.contains("x86") && !lower.contains("x86_64");
             if is_arm64 {
-                if !is_arm_native {
+                if !is_arm {
                     return true;
                 }
-            } else {
-                if is_arm_native || is_x86_32 {
-                    return true;
-                }
+            } else if is_arm || is_x86_32 {
+                return true;
             }
         }
     } else if current_os == "linux" {
-        let is_linux_native = name_or_path.contains("natives-linux");
+        let is_linux_native = lower.contains("natives-linux");
         if is_linux_native {
-            let is_arm_native = name_or_path.contains("arm64") || name_or_path.contains("aarch64");
-            if is_arm64 && !is_arm_native {
+            let is_arm = lower.contains("arm64") || lower.contains("aarch64");
+            if is_arm64 && !is_arm {
                 return true;
             }
-            if !is_arm64 && is_arm_native {
+            if !is_arm64 && is_arm {
                 return true;
             }
         }
@@ -398,13 +397,14 @@ mod tests {
 
     #[test]
     fn test_is_native_for_wrong_arch_macos() {
-        // Na Apple Silicon arm64:
-        // x86_64 natives powinny być ignorowane (zwraca true)
-        assert!(is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos", "osx", true));
-        assert!(is_native_for_wrong_arch("org/lwjgl/lwjgl/3.3.2/lwjgl-3.3.2-natives-macos.jar", "osx", true));
-        assert!(is_native_for_wrong_arch("natives-osx", "osx", true));
+        // Jawne x86_64 powinno być ignorowane na Apple Silicon
+        assert!(is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos-x86_64", "osx", true));
+        assert!(is_native_for_wrong_arch("org/lwjgl/lwjgl/3.3.2/lwjgl-3.3.2-natives-macos-x86_64.jar", "osx", true));
 
-        // arm64 natives powinny być akceptowane (zwraca false)
+        // Klasyczne uniwersalne natives-osx (dla Minecraft 1.0 - 1.18, rd, alpha, beta) MUSZĄ być dozwolone na Apple Silicon
+        assert!(!is_native_for_wrong_arch("natives-osx", "osx", true));
+
+        // arm64 natives powinny być akceptowane na Apple Silicon
         assert!(!is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos-arm64", "osx", true));
         assert!(!is_native_for_wrong_arch("org/lwjgl/lwjgl/3.3.2/lwjgl-3.3.2-natives-macos-arm64.jar", "osx", true));
 
@@ -415,6 +415,6 @@ mod tests {
         // arm64 natives powinny być ignorowane (zwraca true)
         assert!(is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos-arm64", "osx", false));
         // x86_64 natives powinny być akceptowane (zwraca false)
-        assert!(!is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos", "osx", false));
+        assert!(!is_native_for_wrong_arch("org.lwjgl:lwjgl:3.3.2:natives-macos-x86_64", "osx", false));
     }
 }
