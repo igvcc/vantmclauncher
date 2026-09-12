@@ -6,7 +6,7 @@ use crate::downloader::{
 use crate::instances::list_instances;
 use crate::java::{download_temurin_java, find_java_binary, probe_java_binary, scan_java_installations};
 use crate::models::{DownloadProgress, LaunchLogPayload};
-use crate::paths::{get_assets_dir, get_instance_dir, get_libraries_dir, get_runtimes_dir};
+use crate::paths::{get_assets_dir, get_instance_dir, get_launcher_dir, get_libraries_dir, get_runtimes_dir, get_versions_dir};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs::{self, File};
@@ -111,7 +111,10 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         }
     }
 
-    // 4. Jeśli loader to Fabric lub Quilt, pobierz biblioteki i podmień mainClass
+    let mut extra_forge_jvm_args = Vec::new();
+    let mut extra_forge_game_args = Vec::new();
+
+    // 4. Jeśli loader to Fabric, Quilt, Forge lub NeoForge
     if instance.loader == "fabric" || instance.loader == "quilt" {
         let (profile_url, loader_type_name) = if instance.loader == "quilt" {
             let loader_ver = instance.loader_version.as_deref().unwrap_or("0.20.0-beta.9");
@@ -172,6 +175,12 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
                 }
             }
         }
+    } else if instance.loader == "forge" || instance.loader == "neoforge" {
+        let forge_data = prepare_forge_or_neoforge(&instance, &java_bin, &app_handle).await?;
+        main_class = forge_data.main_class;
+        classpath_entries.extend(forge_data.classpath_entries);
+        extra_forge_jvm_args = forge_data.extra_jvm_args;
+        extra_forge_game_args = forge_data.extra_game_args;
     }
 
     // Dodaj client.jar do classpath
@@ -242,11 +251,13 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         }
     }
 
+    jvm_args.extend(extra_forge_jvm_args);
+
     jvm_args.push("-cp".to_string());
     jvm_args.push(classpath_str);
     jvm_args.push(main_class);
 
-    let game_args = vec![
+    let mut game_args = vec![
         "--username".to_string(),
         settings.nickname.clone(),
         "--version".to_string(),
@@ -266,6 +277,7 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
         "--versionType".to_string(),
         "VantMcLauncher".to_string(),
     ];
+    game_args.extend(extra_forge_game_args);
 
     let full_args: Vec<String> = jvm_args.into_iter().chain(game_args).collect();
 
@@ -618,6 +630,241 @@ async fn resolve_java_path(
 
     let downloaded_path = download_temurin_java(21, app_handle.clone()).await?;
     Ok(downloaded_path)
+}
+
+struct ForgeProfileData {
+    main_class: String,
+    classpath_entries: Vec<PathBuf>,
+    extra_jvm_args: Vec<String>,
+    extra_game_args: Vec<String>,
+}
+
+async fn prepare_forge_or_neoforge(
+    instance: &crate::models::Instance,
+    java_bin: &str,
+    app_handle: &AppHandle,
+) -> Result<ForgeProfileData, String> {
+    let launcher_dir = get_launcher_dir();
+    let versions_dir = get_versions_dir();
+    let is_neoforge = instance.loader == "neoforge";
+    let loader_name = if is_neoforge { "NeoForge" } else { "Forge" };
+
+    // Wyciągnij czystą wersję loadera (usuń dopiski typu "(zalecana)" lub "(najnowsza)")
+    let raw_ver = instance.loader_version.as_deref().unwrap_or("").trim();
+    let clean_ver = raw_ver.split_whitespace().next().unwrap_or(raw_ver);
+
+    let clean_ver = if clean_ver.is_empty() {
+        if is_neoforge {
+            let list = crate::loaders_api::get_neoforge_versions(&instance.mc_version).await?;
+            list.first().cloned().unwrap_or_else(|| "20.4.80".to_string())
+        } else {
+            let list = crate::loaders_api::get_forge_versions(&instance.mc_version).await?;
+            let first = list.first().cloned().unwrap_or_default();
+            first.split_whitespace().next().unwrap_or("").to_string()
+        }
+    } else {
+        clean_ver.to_string()
+    };
+
+    if clean_ver.is_empty() {
+        return Err(format!("Nie znaleziono odpowiedniej wersji {} dla Minecraft {}", loader_name, instance.mc_version));
+    }
+
+    // Szukaj istniejącego pliku JSON wersji w versions/
+    let mut found_json_path: Option<PathBuf> = None;
+
+    if let Ok(entries) = fs::read_dir(&versions_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let dirname = path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+                let filter_key = if is_neoforge { "neoforge" } else { "forge" };
+                if dirname.contains(filter_key) && dirname.contains(&clean_ver.to_lowercase()) {
+                    let json_candidate = path.join(format!("{}.json", path.file_name().unwrap().to_string_lossy()));
+                    if json_candidate.exists() {
+                        found_json_path = Some(json_candidate);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Jeśli nie znaleziono, pobierz instalator i zainstaluj klienta
+    let profile_json_path = match found_json_path {
+        Some(p) => p,
+        None => {
+            let installer_url = if is_neoforge {
+                format!(
+                    "https://maven.neoforged.net/releases/net/neoforged/neoforge/{}/neoforge-{}-installer.jar",
+                    clean_ver, clean_ver
+                )
+            } else {
+                format!(
+                    "https://maven.minecraftforge.net/net/minecraftforge/forge/{}-{}/forge-{}-{}-installer.jar",
+                    instance.mc_version, clean_ver, instance.mc_version, clean_ver
+                )
+            };
+
+            let temp_installer = launcher_dir.join(format!("{}-{}-installer.jar", instance.loader, clean_ver));
+
+            let _ = app_handle.emit(
+                "download-progress",
+                DownloadProgress {
+                    step: format!("Pobieranie {}", loader_name),
+                    current: 10,
+                    total: 100,
+                    percentage: 10.0,
+                    message: format!("Pobieranie instalatora {} {}...", loader_name, clean_ver),
+                },
+            );
+
+            let client = reqwest::Client::builder()
+                .user_agent("VantMcLauncher/1.0")
+                .build()
+                .map_err(|e| e.to_string())?;
+
+            let resp = client.get(&installer_url).send().await.map_err(|e| format!("Błąd pobierania instalatora {}: {}", loader_name, e))?;
+            if !resp.status().is_success() {
+                return Err(format!("Serwer pobierania {} zwrócił błąd HTTP {}. Sprawdź wybraną wersję.", loader_name, resp.status()));
+            }
+
+            let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+            fs::write(&temp_installer, &bytes).map_err(|e| format!("Błąd zapisu instalatora: {}", e))?;
+
+            // Upewnij się, że plik launcher_profiles.json istnieje (wymagany przez instalator Forge)
+            let profiles_path = launcher_dir.join("launcher_profiles.json");
+            if !profiles_path.exists() {
+                let _ = fs::write(&profiles_path, b"{\"profiles\":{}}");
+            }
+
+            let _ = app_handle.emit(
+                "download-progress",
+                DownloadProgress {
+                    step: format!("Instalacja {}", loader_name),
+                    current: 30,
+                    total: 100,
+                    percentage: 30.0,
+                    message: format!("Instalowanie i łatanie plików {} (może to zająć chwilę)...", loader_name),
+                },
+            );
+
+            let output = Command::new(java_bin)
+                .args([
+                    "-jar",
+                    &temp_installer.to_string_lossy(),
+                    "--installClient",
+                    &launcher_dir.to_string_lossy(),
+                ])
+                .output()
+                .map_err(|e| format!("Błąd uruchomienia instalatora {}: {}", loader_name, e))?;
+
+            let _ = fs::remove_file(&temp_installer);
+
+            if !output.status.success() {
+                let err_out = String::from_utf8_lossy(&output.stderr);
+                let std_out = String::from_utf8_lossy(&output.stdout);
+                return Err(format!("Instalator {} zakończył się błędem:\n{}\n{}", loader_name, err_out, std_out));
+            }
+
+            // Ponownie przeskanuj versions/ w poszukiwaniu utworzonego profilu
+            let mut detected: Option<PathBuf> = None;
+            if let Ok(entries) = fs::read_dir(&versions_dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let dirname = path.file_name().unwrap_or_default().to_string_lossy().to_lowercase();
+                        let filter_key = if is_neoforge { "neoforge" } else { "forge" };
+                        if dirname.contains(filter_key) && dirname.contains(&clean_ver.to_lowercase()) {
+                            let json_candidate = path.join(format!("{}.json", path.file_name().unwrap().to_string_lossy()));
+                            if json_candidate.exists() {
+                                detected = Some(json_candidate);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            detected.ok_or_else(|| format!("Instalator {} zakończył pracę, ale nie znaleziono wygenerowanego profilu JSON", loader_name))?
+        }
+    };
+
+    // Odczytaj profil JSON
+    let content = fs::read_to_string(&profile_json_path)
+        .map_err(|e| format!("Błąd odczytu profilu {}: {}", profile_json_path.display(), e))?;
+    let version_json: Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Błąd parsowania JSON profilu: {}", e))?;
+
+    let main_class = version_json
+        .get("mainClass")
+        .and_then(|m| m.as_str())
+        .unwrap_or("cpw.mods.bootstraplauncher.BootstrapLauncher")
+        .to_string();
+
+    #[cfg(target_os = "windows")]
+    let classpath_sep = ";";
+    #[cfg(not(target_os = "windows"))]
+    let classpath_sep = ":";
+
+    let mut extra_jvm_args = Vec::new();
+    if let Some(jvm_arr) = version_json.pointer("/arguments/jvm").and_then(|j| j.as_array()) {
+        for arg in jvm_arr {
+            if let Some(s) = arg.as_str() {
+                let resolved = s
+                    .replace("${library_directory}", &get_libraries_dir().to_string_lossy())
+                    .replace("${classpath_separator}", classpath_sep)
+                    .replace("${version_name}", &instance.mc_version);
+                extra_jvm_args.push(resolved);
+            }
+        }
+    }
+
+    let mut extra_game_args = Vec::new();
+    if let Some(game_arr) = version_json.pointer("/arguments/game").and_then(|g| g.as_array()) {
+        for arg in game_arr {
+            if let Some(s) = arg.as_str() {
+                extra_game_args.push(s.to_string());
+            }
+        }
+    } else if let Some(mc_args) = version_json.get("minecraftArguments").and_then(|m| m.as_str()) {
+        // Obsługa starszych wydań Forge (1.7.10 - 1.12.2)
+        let parts: Vec<&str> = mc_args.split_whitespace().collect();
+        for i in 0..parts.len() {
+            if parts[i] == "--tweakClass" && i + 1 < parts.len() {
+                extra_game_args.push("--tweakClass".to_string());
+                extra_game_args.push(parts[i + 1].to_string());
+            }
+        }
+    }
+
+    let mut classpath_entries = Vec::new();
+    if let Some(libs) = version_json.get("libraries").and_then(|l| l.as_array()) {
+        for lib in libs {
+            if let Some(artifact) = lib.pointer("/downloads/artifact") {
+                if let Some(p) = artifact.get("path").and_then(|p| p.as_str()) {
+                    let lib_path = get_libraries_dir().join(p);
+                    if lib_path.exists() {
+                        classpath_entries.push(lib_path);
+                    }
+                }
+            } else if let Some(name) = lib.get("name").and_then(|n| n.as_str()) {
+                if let Some(maven_path) = maven_coordinate_to_path(name) {
+                    let lib_path = get_libraries_dir().join(&maven_path);
+                    if lib_path.exists() {
+                        classpath_entries.push(lib_path);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(ForgeProfileData {
+        main_class,
+        classpath_entries,
+        extra_jvm_args,
+        extra_game_args,
+    })
 }
 
 fn extract_natives(jar_path: &Path, natives_dir: &Path) {

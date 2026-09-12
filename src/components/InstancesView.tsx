@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2 } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Plus, Layers, Play, FolderOpen, Trash2, Box, X, Loader2, Search } from "lucide-react";
 import { Instance, VersionEntry } from "../types";
 import { safeInvoke } from "../api";
 
@@ -41,6 +41,9 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
   const [loaderVersion, setLoaderVersion] = useState("");
   const [loaderVersionsList, setLoaderVersionsList] = useState<string[]>([]);
   const [isLoadingLoaders, setIsLoadingLoaders] = useState(false);
+  const [showSnapshots, setShowSnapshots] = useState(false);
+  const [mcVersionSearch, setMcVersionSearch] = useState("");
+  const [loaderVersionSearch, setLoaderVersionSearch] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -93,6 +96,38 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
       setIsLoadingLoaders(false);
     }
   }, [loader, fabricLoaders]);
+
+  const filteredMcVersions = useMemo(() => {
+    return availableVersions.filter((v) => {
+      if (!showSnapshots && v.type !== "release") {
+        return false;
+      }
+      if (mcVersionSearch.trim()) {
+        return v.id.toLowerCase().includes(mcVersionSearch.toLowerCase().trim());
+      }
+      return true;
+    });
+  }, [availableVersions, showSnapshots, mcVersionSearch]);
+
+  const releaseVersions = useMemo(
+    () => filteredMcVersions.filter((v) => v.type === "release"),
+    [filteredMcVersions]
+  );
+  const snapshotVersions = useMemo(
+    () => filteredMcVersions.filter((v) => v.type === "snapshot"),
+    [filteredMcVersions]
+  );
+  const otherVersions = useMemo(
+    () => filteredMcVersions.filter((v) => v.type !== "release" && v.type !== "snapshot"),
+    [filteredMcVersions]
+  );
+
+  const filteredLoaderVersions = useMemo(() => {
+    if (!loaderVersionSearch.trim()) return loaderVersionsList;
+    return loaderVersionsList.filter((v) =>
+      v.toLowerCase().includes(loaderVersionSearch.toLowerCase().trim())
+    );
+  }, [loaderVersionsList, loaderVersionSearch]);
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,22 +321,70 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5">
-                  Wersja gry Minecraft
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
+                    Wersja gry Minecraft ({availableVersions.length} z API)
+                  </label>
+                </div>
+
+                <div className="relative mb-2">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Szukaj wersji (np. 1.20, 1.16.5, 1.12.2, 1.7.10, 24w)..."
+                    value={mcVersionSearch}
+                    onChange={(e) => setMcVersionSearch(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 mb-2 cursor-pointer select-none text-[11px] text-gray-400 hover:text-gray-200 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={showSnapshots}
+                    onChange={(e) => setShowSnapshots(e.target.checked)}
+                    className="rounded border-white/20 bg-white/5 text-neon-cyan focus:ring-0 cursor-pointer"
+                  />
+                  <span>Pokaż snapshoty, wersje testowe i archiwalne ({availableVersions.length} wersji z Mojang API)</span>
                 </label>
+
                 <select
                   value={mcVersion}
                   onChange={(e) => setMcVersion(e.target.value)}
                   className="w-full bg-black/70 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 cursor-pointer"
                 >
-                  {availableVersions
-                    .filter((v) => v.type === "release")
-                    .slice(0, 30)
-                    .map((v) => (
-                      <option key={v.id} value={v.id} className="bg-[#111114]">
-                        Minecraft {v.id}
-                      </option>
-                    ))}
+                  {releaseVersions.length > 0 && (
+                    <optgroup label="Wydania oficjalne (Releases)">
+                      {releaseVersions.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-[#111114]">
+                          Minecraft {v.id}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {snapshotVersions.length > 0 && (
+                    <optgroup label="Wersje testowe (Snapshoty / RC)">
+                      {snapshotVersions.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-[#111114]">
+                          {v.id} (snapshot)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {otherVersions.length > 0 && (
+                    <optgroup label="Wersje archiwalne (Beta & Alpha)">
+                      {otherVersions.map((v) => (
+                        <option key={v.id} value={v.id} className="bg-[#111114]">
+                          {v.id} ({v.type})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {filteredMcVersions.length === 0 && (
+                    <option disabled className="bg-[#111114]">
+                      Nie znaleziono wersji dla "{mcVersionSearch}"
+                    </option>
+                  )}
                 </select>
               </div>
 
@@ -309,21 +392,33 @@ export const InstancesView: React.FC<InstancesViewProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">
-                      Wersja silnika {loader.toUpperCase()}
+                      Wersja silnika {loader.toUpperCase()} ({loaderVersionsList.length} z API)
                     </label>
                     {isLoadingLoaders && (
                       <span className="flex items-center gap-1 text-[11px] text-neon-cyan">
-                        <Loader2 size={11} className="animate-spin" /> Sprawdzanie dostępnych wersji...
+                        <Loader2 size={11} className="animate-spin" /> Sprawdzanie API...
                       </span>
                     )}
                   </div>
-                  {loaderVersionsList.length > 0 ? (
+                  {loaderVersionsList.length > 15 && (
+                    <div className="relative mb-2">
+                      <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder={`Filtruj wersje ${loader.toUpperCase()}...`}
+                        value={loaderVersionSearch}
+                        onChange={(e) => setLoaderVersionSearch(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-cyan-400"
+                      />
+                    </div>
+                  )}
+                  {filteredLoaderVersions.length > 0 ? (
                     <select
                       value={loaderVersion}
                       onChange={(e) => setLoaderVersion(e.target.value)}
-                      className="w-full bg-black/70 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 cursor-pointer font-mono"
+                      className="w-full bg-black/70 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:outline-none focus:border-cyan-400 cursor-pointer font-mono max-h-48"
                     >
-                      {loaderVersionsList.slice(0, 20).map((ver) => (
+                      {filteredLoaderVersions.map((ver) => (
                         <option key={ver} value={ver} className="bg-[#111114]">
                           {ver}
                         </option>
