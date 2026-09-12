@@ -498,7 +498,7 @@ export default function App() {
             onDeleteMod={handleDeleteMod}
             onInstallModFile={handleInstallModFile}
             onInstallModBytes={handleInstallModBytes}
-            onOpenModsFolder={() => activeInstance && handleOpenFolder(activeInstance.id, "mods")}
+            onOpenModsFolder={(category) => activeInstance && handleOpenFolder(activeInstance.id, category || "mods")}
             onModInstalled={() => activeInstance && loadModsForInstance(activeInstance.id)}
           />
         )}

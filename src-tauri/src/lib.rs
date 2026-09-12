@@ -1,5 +1,7 @@
 mod auth;
 mod config;
+mod content;
+mod curseforge;
 mod downloader;
 mod instances;
 mod java;
@@ -12,6 +14,7 @@ mod mods;
 mod paths;
 mod system_stats;
 
+use content::{UnifiedCatalogItem, UnifiedInstalledItem, UnifiedVersionItem};
 use launcher::GameProcessState;
 use models::{Instance, JavaInstallation, ModItem, UserSettings, VersionEntry};
 use modrinth::{ModrinthSearchResult, ModrinthVersion};
@@ -146,6 +149,101 @@ async fn install_modrinth_mod(
 }
 
 #[tauri::command]
+async fn search_content(
+    query: String,
+    category: String,
+    source: Option<String>,
+    loader: Option<String>,
+    mc_version: Option<String>,
+    limit: Option<u32>,
+    offset: Option<u32>,
+) -> Result<Vec<UnifiedCatalogItem>, String> {
+    content::search_content(
+        &query,
+        &category,
+        source.as_deref().unwrap_or("all"),
+        loader.as_deref(),
+        mc_version.as_deref(),
+        limit.unwrap_or(20),
+        offset.unwrap_or(0),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn get_content_versions(
+    project_id: String,
+    source: Option<String>,
+    category: Option<String>,
+    loader: Option<String>,
+    mc_version: Option<String>,
+) -> Result<Vec<UnifiedVersionItem>, String> {
+    content::get_content_versions(
+        &project_id,
+        source.as_deref().unwrap_or("modrinth"),
+        category.as_deref().unwrap_or("mods"),
+        loader.as_deref(),
+        mc_version.as_deref(),
+    )
+    .await
+}
+
+#[tauri::command]
+async fn install_content_file(
+    instance_id: String,
+    category: String,
+    file_url: String,
+    filename: String,
+) -> Result<UnifiedInstalledItem, String> {
+    content::install_content_file(&instance_id, &category, &file_url, &filename).await
+}
+
+#[tauri::command]
+fn get_content_items(
+    instance_id: String,
+    category: String,
+) -> Result<Vec<UnifiedInstalledItem>, String> {
+    content::list_installed_content(&instance_id, &category)
+}
+
+#[tauri::command]
+fn toggle_content_item(
+    instance_id: String,
+    category: String,
+    filename: String,
+) -> Result<UnifiedInstalledItem, String> {
+    content::toggle_installed_content(&instance_id, &category, &filename)
+}
+
+#[tauri::command]
+fn delete_content_item(
+    instance_id: String,
+    category: String,
+    filename: String,
+) -> Result<(), String> {
+    content::delete_installed_content(&instance_id, &category, &filename)
+}
+
+#[tauri::command]
+fn install_content_file_path(
+    instance_id: String,
+    category: String,
+    path: String,
+) -> Result<UnifiedInstalledItem, String> {
+    content::install_content_from_path(&instance_id, &category, &path)
+}
+
+#[tauri::command]
+fn install_content_file_bytes(
+    instance_id: String,
+    category: String,
+    filename: String,
+    bytes: Vec<u8>,
+) -> Result<UnifiedInstalledItem, String> {
+    content::install_content_bytes(&instance_id, &category, &filename, &bytes)
+}
+
+#[tauri::command]
 fn get_java_installations() -> Vec<JavaInstallation> {
     java::scan_java_installations()
 }
@@ -231,6 +329,14 @@ pub fn run() {
             search_modrinth_mods,
             get_modrinth_versions,
             install_modrinth_mod,
+            search_content,
+            get_content_versions,
+            install_content_file,
+            get_content_items,
+            toggle_content_item,
+            delete_content_item,
+            install_content_file_path,
+            install_content_file_bytes,
             get_java_installations,
             download_java,
             launch_game,

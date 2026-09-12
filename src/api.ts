@@ -227,15 +227,113 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
           files: [{ url: "https://example.com/mod.jar", filename: "mod.jar", primary: true, size: 1024000 }],
         }
       ] as unknown as T;
-    case "install_modrinth_mod":
+    case "search_content":
+      return [
+        {
+          id: "modrinth:AANobbMI",
+          source: "modrinth",
+          raw_id: "AANobbMI",
+          slug: "sodium",
+          title: "Sodium",
+          description: "Nowoczesny silnik renderujący, który dramatycznie podnosi liczbę FPS.",
+          icon_url: "https://cdn.modrinth.com/data/AANobbMI/295862f4724dc3f78df3447ad6072b2dcd3ef0c9_96.webp",
+          downloads: 223800000,
+          categories: ["fabric", "neoforge", "optimization"],
+          author: "jellysquid3",
+          category: args?.category || "mods",
+        },
+        {
+          id: "curseforge:238222",
+          source: "curseforge",
+          raw_id: "238222",
+          slug: "jei",
+          title: "Just Enough Items (JEI)",
+          description: "Przeglądarka przedmiotów i receptur craftingu dla gry Minecraft.",
+          icon_url: "https://media.forgecdn.net/avatars/thumbnails/28/670/256/256/635838942200926830.png",
+          downloads: 310000000,
+          categories: ["Utility", "Information"],
+          author: "mezz",
+          category: args?.category || "mods",
+        }
+      ] as unknown as T;
+    case "get_content_versions":
+      return [
+        {
+          id: "ver-1",
+          source: args?.source || "modrinth",
+          project_id: args?.projectId || "sample",
+          name: "Wydanie 1.0.0 (Najnowsza)",
+          version_number: "1.0.0",
+          release_type: "release",
+          game_versions: ["26.2", "1.21.1", "1.20.4"],
+          loaders: ["fabric", "neoforge"],
+          file_name: "sample-mod-1.0.0.jar",
+          file_size: 1850000,
+          download_url: "https://example.com/mod.jar",
+          date: "2026-09-10",
+        },
+        {
+          id: "ver-2",
+          source: args?.source || "modrinth",
+          project_id: args?.projectId || "sample",
+          name: "Wydanie 0.9.1 (Kompatybilna)",
+          version_number: "0.9.1",
+          release_type: "release",
+          game_versions: ["26.2"],
+          loaders: ["fabric"],
+          file_name: "sample-mod-0.9.1.jar",
+          file_size: 1720000,
+          download_url: "https://example.com/mod-compat.jar",
+          date: "2026-08-20",
+        },
+        {
+          id: "ver-3",
+          source: args?.source || "modrinth",
+          project_id: args?.projectId || "sample",
+          name: "Wersja Beta 0.9.0",
+          version_number: "0.9.0-beta",
+          release_type: "beta",
+          game_versions: ["26.2", "1.21"],
+          loaders: ["fabric"],
+          file_name: "sample-mod-0.9.0-beta.jar",
+          file_size: 1690000,
+          download_url: "https://example.com/mod-beta.jar",
+          date: "2026-08-01",
+        }
+      ] as unknown as T;
+    case "install_content_file":
       return {
-        filename: args?.filename || "downloaded-mod.jar",
-        name: args?.filename?.replace(".jar", "") || "Nowy Mod",
-        version: "1.0.0",
-        description: "Pobrano z Modrinth",
-        authors: ["Modrinth"],
+        filename: args?.filename || "item.jar",
+        name: args?.filename?.replace(".jar", "").replace(".zip", "") || "Nowy Element",
         enabled: true,
+        size: 1024000,
+        category: args?.category || "mods",
+        description: "Pobrano do folderu",
       } as unknown as T;
+    case "get_content_items":
+      return [
+        {
+          filename: "sodium-fabric-0.9.1+mc26.2.jar",
+          name: "Sodium",
+          enabled: true,
+          size: 1834384,
+          category: "mods",
+          description: "Modern rendering engine",
+        }
+      ] as unknown as T;
+    case "toggle_content_item":
+      return {
+        filename: args?.filename?.endsWith(".disabled")
+          ? args.filename.replace(".disabled", "")
+          : `${args?.filename}.disabled`,
+        name: "Element",
+        enabled: !args?.filename?.endsWith(".disabled"),
+        size: 1000,
+        category: args?.category || "mods",
+        description: "Element",
+      } as unknown as T;
+    case "delete_content_item":
+      return undefined as unknown as T;
     case "get_java_installations":
       return MOCK_JAVA as unknown as T;
     case "download_java":

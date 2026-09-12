@@ -36,6 +36,48 @@ export interface ModrinthFile {
   size: number;
 }
 
+export type ContentType = "mods" | "resourcepacks" | "shaderpacks" | "datapacks";
+export type ContentSource = "all" | "modrinth" | "curseforge";
+
+export interface UnifiedCatalogItem {
+  id: string;
+  source: "modrinth" | "curseforge";
+  raw_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon_url: string | null;
+  downloads: number;
+  categories: string[];
+  author: string;
+  category: ContentType;
+}
+
+export interface UnifiedVersionItem {
+  id: string;
+  source: "modrinth" | "curseforge";
+  project_id: string;
+  name: string;
+  version_number: string;
+  release_type: "release" | "beta" | "alpha" | string;
+  game_versions: string[];
+  loaders: string[];
+  file_name: string;
+  file_size: number;
+  download_url: string;
+  date?: string | null;
+}
+
+export interface UnifiedInstalledItem {
+  filename: string;
+  name: string;
+  enabled: boolean;
+  size: number;
+  category: ContentType;
+  description: string;
+  icon_base64?: string | null;
+}
+
 export interface ModrinthVersion {
   id: string;
   project_id: string;
@@ -44,6 +86,8 @@ export interface ModrinthVersion {
   game_versions: string[];
   loaders: string[];
   files: ModrinthFile[];
+  version_type?: string;
+  date_published?: string;
 }
 
 export interface Instance {

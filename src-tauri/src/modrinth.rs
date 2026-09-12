@@ -37,6 +37,10 @@ pub struct ModrinthVersion {
     pub game_versions: Vec<String>,
     pub loaders: Vec<String>,
     pub files: Vec<ModrinthFile>,
+    #[serde(default)]
+    pub version_type: Option<String>,
+    #[serde(default)]
+    pub date_published: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,8 +51,19 @@ pub struct ModrinthFile {
     pub size: u64,
 }
 
-pub async fn search_mods(
+pub fn map_category_to_modrinth_type(category: &str) -> &'static str {
+    match category {
+        "mods" => "mod",
+        "resourcepacks" | "texturepacks" => "resourcepack",
+        "shaderpacks" | "shaders" => "shader",
+        "datapacks" => "datapack",
+        _ => "mod",
+    }
+}
+
+pub async fn search_content_typed(
     query: &str,
+    category: &str,
     loader: Option<&str>,
     mc_version: Option<&str>,
     limit: u32,
@@ -59,18 +74,22 @@ pub async fn search_mods(
         .build()
         .map_err(|e| format!("Błąd klienta HTTP: {}", e))?;
 
-    let mut facets: Vec<Vec<String>> = vec![vec!["project_type:mod".to_string()]];
+    let p_type = map_category_to_modrinth_type(category);
+    let mut facets: Vec<Vec<String>> = vec![vec![format!("project_type:{}", p_type)]];
 
-    if let Some(l) = loader {
-        let l_clean = l.to_lowercase();
-        if l_clean != "vanilla" && !l_clean.is_empty() {
-            facets.push(vec![format!("categories:{}", l_clean)]);
+    if p_type == "mod" {
+        if let Some(l) = loader {
+            let l_clean = l.to_lowercase();
+            if l_clean != "vanilla" && !l_clean.is_empty() {
+                facets.push(vec![format!("categories:{}", l_clean)]);
+            }
         }
     }
 
     if let Some(v) = mc_version {
-        if !v.is_empty() {
-            facets.push(vec![format!("versions:{}", v)]);
+        let v_trim = v.trim();
+        if !v_trim.is_empty() {
+            facets.push(vec![format!("versions:{}", v_trim)]);
         }
     }
 
@@ -106,6 +125,16 @@ pub async fn search_mods(
         .map_err(|e| format!("Błąd parsowania odpowiedzi Modrinth: {}", e))?;
 
     Ok(data)
+}
+
+pub async fn search_mods(
+    query: &str,
+    loader: Option<&str>,
+    mc_version: Option<&str>,
+    limit: u32,
+    offset: u32,
+) -> Result<ModrinthSearchResult, String> {
+    search_content_typed(query, "mods", loader, mc_version, limit, offset).await
 }
 
 pub async fn get_project_versions(

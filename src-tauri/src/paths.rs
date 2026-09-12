@@ -59,6 +59,30 @@ pub fn get_instance_mods_dir(instance_id: &str) -> PathBuf {
     dir
 }
 
+pub fn get_instance_resourcepacks_dir(instance_id: &str) -> PathBuf {
+    let dir = get_instance_dir(instance_id).join("resourcepacks");
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
+    }
+    dir
+}
+
+pub fn get_instance_shaderpacks_dir(instance_id: &str) -> PathBuf {
+    let dir = get_instance_dir(instance_id).join("shaderpacks");
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
+    }
+    dir
+}
+
+pub fn get_instance_datapacks_dir(instance_id: &str) -> PathBuf {
+    let dir = get_instance_dir(instance_id).join("datapacks");
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
+    }
+    dir
+}
+
 pub fn get_assets_dir() -> PathBuf {
     let dir = get_launcher_dir().join("assets");
     if !dir.exists() {
