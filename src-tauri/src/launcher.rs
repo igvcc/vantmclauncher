@@ -32,8 +32,32 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     // 1. Pobierz/przygotuj pliki Vanilla oraz JSON wersji
     let (client_jar, vanilla_json) = prepare_vanilla_files(&instance.mc_version, &app_handle).await?;
 
+    let required_major: u32 = vanilla_json
+        .pointer("/javaVersion/majorVersion")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32)
+        .unwrap_or_else(|| {
+            if instance.mc_version.starts_with("1.17")
+                || instance.mc_version.starts_with("1.18")
+                || instance.mc_version.starts_with("1.19")
+                || (instance.mc_version.starts_with("1.20.") && !instance.mc_version.starts_with("1.20.5") && !instance.mc_version.starts_with("1.20.6"))
+            {
+                17
+            } else if instance.mc_version.starts_with("1.20.5")
+                || instance.mc_version.starts_with("1.20.6")
+                || instance.mc_version.starts_with("1.21")
+                || instance.mc_version.starts_with("26.")
+                || instance.mc_version.starts_with("25w")
+                || instance.mc_version.starts_with("26w")
+            {
+                21
+            } else {
+                8
+            }
+        });
+
     // 2. Ustal ścieżkę do Javy dopasowaną do wymagań wersji gry
-    let java_bin = resolve_java_path(&settings, &vanilla_json, &instance.mc_version, &app_handle).await?;
+    let java_bin = resolve_java_path(&settings, required_major, &instance.mc_version, &app_handle).await?;
 
     let instance_dir = get_instance_dir(instance_id);
     let natives_dir = instance_dir.join("natives");
@@ -224,7 +248,11 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
 
     #[cfg(target_os = "macos")]
     {
-        jvm_args.push("-XstartOnFirstThread".to_string());
+        // -XstartOnFirstThread jest wymagany wyłącznie przez LWJGL 3 (Minecraft 1.13+) dla biblioteki GLFW.
+        // Wersje klasyczne (Minecraft <= 1.12.2 na LWJGL 2 / Java 8) obsługują pętlę AWT/AppKit samodzielnie.
+        if required_major > 8 {
+            jvm_args.push("-XstartOnFirstThread".to_string());
+        }
 
         let has_any_gc = settings.jvm_args.contains("UseG1GC")
             || settings.jvm_args.contains("UseZGC")
@@ -567,57 +595,82 @@ pub fn get_running_instance_id(app_handle: &AppHandle) -> Option<String> {
 
 async fn resolve_java_path(
     settings: &crate::models::UserSettings,
-    vanilla_json: &Value,
+    required_major: u32,
     mc_version: &str,
     app_handle: &AppHandle,
 ) -> Result<String, String> {
-    if let Some(ref path) = settings.custom_java_path {
-        if Path::new(path).exists() {
-            return Ok(path.clone());
-        }
-    }
-
-    let required_major: u32 = vanilla_json
-        .pointer("/javaVersion/majorVersion")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or_else(|| {
-            if mc_version.starts_with("1.17")
-                || mc_version.starts_with("1.18")
-                || mc_version.starts_with("1.19")
-                || (mc_version.starts_with("1.20.") && !mc_version.starts_with("1.20.5") && !mc_version.starts_with("1.20.6"))
-            {
-                17
-            } else if mc_version.starts_with("1.20.5")
-                || mc_version.starts_with("1.20.6")
-                || mc_version.starts_with("1.21")
-                || mc_version.starts_with("26.")
-                || mc_version.starts_with("25w")
-                || mc_version.starts_with("26w")
-            {
-                21
-            } else {
-                8
-            }
-        });
-
     let runtimes_dir = get_runtimes_dir();
     let is_sys_arm64 = std::env::consts::ARCH == "aarch64";
+
+    if let Some(ref path) = settings.custom_java_path {
+        let p = Path::new(path);
+        if p.exists() {
+            if let Some(info) = probe_java_binary(p) {
+                let compatible = if required_major <= 8 {
+                    if is_sys_arm64 {
+                        info.major_version == 8 && !info.is_arm64
+                    } else {
+                        info.major_version == 8
+                    }
+                } else if required_major == 17 {
+                    info.major_version >= 17 && info.major_version <= 21
+                } else {
+                    info.major_version >= 21
+                };
+
+                if compatible {
+                    return Ok(path.clone());
+                } else {
+                    let _ = app_handle.emit(
+                        "minecraft-log",
+                        format!(
+                            "[VantLauncher OSTRZEŻENIE] Własna Java ({}, wersja={}, arch={}) jest niekompatybilna z tą wersją Minecrafta {} (wymagana Java {} {}). Automatyczne przełączanie...",
+                            path,
+                            info.major_version,
+                            if info.is_arm64 { "arm64" } else { "x86_64" },
+                            mc_version,
+                            required_major,
+                            if is_sys_arm64 && required_major <= 8 { "x86_64 pod Rosetta 2 dla LWJGL 2" } else { "" }
+                        ),
+                    );
+                }
+            } else {
+                return Ok(path.clone());
+            }
+        }
+    }
 
     // 1. Sprawdź runtimes launchera pod kątem dokładnej wersji (np. runtimes/java-8, runtimes/java-17, runtimes/java-21)
     let specific_dir = runtimes_dir.join(format!("java-{}", required_major));
     if specific_dir.exists() {
         if let Some(java_exec) = find_java_binary(&specific_dir) {
-            return Ok(java_exec.to_string_lossy().to_string());
+            if required_major <= 8 && is_sys_arm64 {
+                // Na macOS Apple Silicon Java 8 MUSI być architekturą x86_64, by ładować biblioteki LWJGL 2
+                if let Some(info) = probe_java_binary(&java_exec) {
+                    if !info.is_arm64 {
+                        return Ok(java_exec.to_string_lossy().to_string());
+                    }
+                }
+            } else {
+                return Ok(java_exec.to_string_lossy().to_string());
+            }
         }
     }
 
     let installed = scan_java_installations();
 
-    // 2. Wyszukaj najlepiej pasującą Javę
+    // 2. Wyszukaj najlepiej pasującą Javę w systemie
     if required_major <= 8 {
-        // Wersje <= 1.16.5 (w tym rd, alpha, beta, 1.2.5, 1.7.10, 1.12.2) MUSZĄ działać na Javie 8
-        if let Some(j8) = installed.iter().find(|j| j.major_version == 8) {
+        // Wersje <= 1.16.5 (w tym rd, alpha, beta, 1.2.5, 1.7.10, 1.12.2) MUSZĄ działać na Javie 8.
+        // Co krytyczne: na macOS Apple Silicon biblioteki LWJGL 2 (liblwjgl.dylib) mają wyłącznie kod x86_64/i386.
+        // Natywny proces arm64 nie jest w stanie załadować biblioteki x86_64 (błąd: no lwjgl in java.library.path).
+        // Dlatego na Apple Silicon szukamy WYŁĄCZNIE Javy 8 x86_64 (działa bezproblemowo przez emulator Rosetta 2).
+        if is_sys_arm64 {
+            if let Some(j8_x64) = installed.iter().find(|j| j.major_version == 8 && !j.is_arm64) {
+                return Ok(j8_x64.path.clone());
+            }
+            // Jeśli brak x86_64 Javy 8 w systemie, NIE używamy Javy arm64! Przechodzimy do automatycznego pobrania Temurin 8 x64.
+        } else if let Some(j8) = installed.iter().find(|j| j.major_version == 8) {
             return Ok(j8.path.clone());
         }
     } else if required_major == 17 {
@@ -647,7 +700,7 @@ async fn resolve_java_path(
         if let Some(high) = installed.iter().find(|j| j.major_version >= 21) {
             return Ok(high.path.clone());
         }
-        // Sprawdź ogólny java-21 w runtimes
+        // Sprawdź ogólny folder java-21 w runtimes
         let java21_dir = runtimes_dir.join("java-21");
         if java21_dir.exists() {
             if let Some(java_exec) = find_java_binary(&java21_dir) {
@@ -664,7 +717,12 @@ async fn resolve_java_path(
             current: 0,
             total: 100,
             percentage: 5.0,
-            message: format!("Pobieranie wymaganej Java {} dla Minecraft {}...", required_major, mc_version),
+            message: format!(
+                "Pobieranie wymaganej Java {} ({}) dla Minecraft {}...",
+                required_major,
+                if is_sys_arm64 && required_major <= 8 { "x86_64 / Rosetta 2" } else { "OpenJDK Temurin" },
+                mc_version
+            ),
         },
     );
 
