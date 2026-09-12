@@ -32,29 +32,36 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
     // 1. Pobierz/przygotuj pliki Vanilla oraz JSON wersji
     let (client_jar, vanilla_json) = prepare_vanilla_files(&instance.mc_version, &app_handle).await?;
 
-    let required_major: u32 = vanilla_json
-        .pointer("/javaVersion/majorVersion")
-        .and_then(|v| v.as_u64())
-        .map(|v| v as u32)
-        .unwrap_or_else(|| {
-            if instance.mc_version.starts_with("1.17")
-                || instance.mc_version.starts_with("1.18")
-                || instance.mc_version.starts_with("1.19")
-                || (instance.mc_version.starts_with("1.20.") && !instance.mc_version.starts_with("1.20.5") && !instance.mc_version.starts_with("1.20.6"))
-            {
-                17
-            } else if instance.mc_version.starts_with("1.20.5")
-                || instance.mc_version.starts_with("1.20.6")
-                || instance.mc_version.starts_with("1.21")
-                || instance.mc_version.starts_with("26.")
-                || instance.mc_version.starts_with("25w")
-                || instance.mc_version.starts_with("26w")
-            {
-                21
-            } else {
-                8
-            }
-        });
+    let required_major: u32 = if instance.mc_version.starts_with("26.")
+        || instance.mc_version.starts_with("26w")
+    {
+        26
+    } else if instance.mc_version.starts_with("25.")
+        || instance.mc_version.starts_with("25w")
+    {
+        25
+    } else {
+        vanilla_json
+            .pointer("/javaVersion/majorVersion")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32)
+            .unwrap_or_else(|| {
+                if instance.mc_version.starts_with("1.17")
+                    || instance.mc_version.starts_with("1.18")
+                    || instance.mc_version.starts_with("1.19")
+                    || (instance.mc_version.starts_with("1.20.") && !instance.mc_version.starts_with("1.20.5") && !instance.mc_version.starts_with("1.20.6"))
+                {
+                    17
+                } else if instance.mc_version.starts_with("1.20.5")
+                    || instance.mc_version.starts_with("1.20.6")
+                    || instance.mc_version.starts_with("1.21")
+                {
+                    21
+                } else {
+                    8
+                }
+            })
+    };
 
     // 2. Ustal ścieżkę do Javy dopasowaną do wymagań wersji gry
     let java_bin = resolve_java_path(&settings, required_major, &instance.mc_version, &app_handle).await?;
@@ -262,18 +269,23 @@ pub async fn launch_minecraft(instance_id: &str, app_handle: AppHandle) -> Resul
             || settings.jvm_args.contains("UseEpsilonGC");
 
         if std::env::consts::ARCH == "aarch64" && !has_any_gc {
-            let is_java_21_or_higher = probe_java_binary(Path::new(&java_bin))
-                .map(|info| info.major_version >= 21)
-                .unwrap_or(false);
+            let java_major = probe_java_binary(Path::new(&java_bin))
+                .map(|info| info.major_version)
+                .unwrap_or(0);
 
-            if is_java_21_or_higher {
-                // Apple Silicon unified memory & low-latency Generational ZGC for Java 21+
+            if java_major >= 24 {
+                // W Java 24+ Generational ZGC jest trybem domyślnym, a flaga -XX:+ZGenerational została usunięta
+                jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
+                jvm_args.push("-XX:+UseZGC".to_string());
+                jvm_args.push("-XX:+UseStringDeduplication".to_string());
+            } else if java_major >= 21 {
+                // Apple Silicon unified memory & low-latency Generational ZGC dla Java 21-23
                 jvm_args.push("-XX:+UnlockExperimentalVMOptions".to_string());
                 jvm_args.push("-XX:+UseZGC".to_string());
                 jvm_args.push("-XX:+ZGenerational".to_string());
                 jvm_args.push("-XX:+UseStringDeduplication".to_string());
             } else {
-                // Java 17 and earlier do not support -XX:+ZGenerational
+                // Java 17 i wcześniejsze
                 jvm_args.push("-XX:+UseG1GC".to_string());
                 jvm_args.push("-XX:+UseStringDeduplication".to_string());
             }
@@ -615,7 +627,7 @@ async fn resolve_java_path(
                 } else if required_major == 17 {
                     info.major_version >= 17 && info.major_version <= 21
                 } else {
-                    info.major_version >= 21
+                    info.major_version >= required_major
                 };
 
                 if compatible {
@@ -691,19 +703,26 @@ async fn resolve_java_path(
             return Ok(j21.path.clone());
         }
     } else {
-        // Nowe wersje (1.20.5+, 1.21+, 26.x)
+        // Nowożytne wersje (1.20.5+, 1.21+, 25.x, 26.x)
+        // Wymagana Java musi spełniać warunek major_version >= required_major (np. Java 26 dla Minecraft 26.x)
         if is_sys_arm64 {
-            if let Some(arm_high) = installed.iter().find(|j| j.major_version >= 21 && j.is_arm64) {
+            if let Some(arm_exact) = installed.iter().find(|j| j.major_version == required_major && j.is_arm64) {
+                return Ok(arm_exact.path.clone());
+            }
+            if let Some(arm_high) = installed.iter().find(|j| j.major_version >= required_major && j.is_arm64) {
                 return Ok(arm_high.path.clone());
             }
         }
-        if let Some(high) = installed.iter().find(|j| j.major_version >= 21) {
+        if let Some(exact) = installed.iter().find(|j| j.major_version == required_major) {
+            return Ok(exact.path.clone());
+        }
+        if let Some(high) = installed.iter().find(|j| j.major_version >= required_major) {
             return Ok(high.path.clone());
         }
-        // Sprawdź ogólny folder java-21 w runtimes
-        let java21_dir = runtimes_dir.join("java-21");
-        if java21_dir.exists() {
-            if let Some(java_exec) = find_java_binary(&java21_dir) {
+        // Sprawdź folder java-{required_major} w runtimes
+        let target_dir = runtimes_dir.join(format!("java-{}", required_major));
+        if target_dir.exists() {
+            if let Some(java_exec) = find_java_binary(&target_dir) {
                 return Ok(java_exec.to_string_lossy().to_string());
             }
         }

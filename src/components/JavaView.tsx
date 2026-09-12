@@ -63,33 +63,51 @@ export const JavaView: React.FC<JavaViewProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2.5 h-2.5 rounded-full bg-neon-cyan animate-pulse"></span>
               <h3 className="font-heading font-bold text-lg text-white">
-                Zainstaluj zalecaną Javę 21 (Temurin OpenJDK)
+                Pobierz zoptymalizowaną wersję Javy (Temurin OpenJDK)
               </h3>
             </div>
             <p className="text-xs text-gray-400 max-w-xl">
-              Szybkie, bezpieczne i zoptymalizowane wydanie pod Twój procesor. Pobierzemy i skonfigurujemy wszystko w tle za Ciebie.
+              Automatycznie dobieramy odpowiednią wersję (Java 26 dla MC 26.x, Java 21 dla 1.21+, Java 17 oraz Java 8 x64 pod Rosetta 2 dla wydań archiwalnych).
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <button
-              onClick={() => onDownloadJava(21)}
+              onClick={() => onDownloadJava(26)}
               disabled={isDownloadingJava}
-              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-heading font-bold text-xs tracking-wider uppercase cursor-pointer ${
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading font-bold text-xs tracking-wider uppercase cursor-pointer ${
                 isDownloadingJava ? "bg-cyan-500/20 text-cyan-300 animate-pulse cursor-not-allowed" : "btn-neon"
               }`}
             >
-              <Download size={16} />
-              <span>{isDownloadingJava ? "Instalowanie..." : "Zainstaluj Java 21"}</span>
+              <Download size={15} />
+              <span>{isDownloadingJava ? "Instalowanie..." : "Zainstaluj Java 26"}</span>
+            </button>
+
+            <button
+              onClick={() => onDownloadJava(21)}
+              disabled={isDownloadingJava}
+              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+              title="Java 21 (dla Minecraft 1.20.5 - 1.21.x)"
+            >
+              Java 21
             </button>
 
             <button
               onClick={() => onDownloadJava(17)}
               disabled={isDownloadingJava}
-              className="px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
               title="Java 17 (dla Minecraft 1.17 - 1.20.4)"
             >
-              Java 17 (starsze wersje)
+              Java 17
+            </button>
+
+            <button
+              onClick={() => onDownloadJava(8)}
+              disabled={isDownloadingJava}
+              className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-gray-300 hover:text-white transition-colors cursor-pointer"
+              title="Java 8 (dla wydań archiwalnych <= 1.16.5 pod Rosetta 2)"
+            >
+              Java 8
             </button>
           </div>
         </div>
